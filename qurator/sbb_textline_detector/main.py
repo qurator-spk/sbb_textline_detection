@@ -1317,7 +1317,7 @@ class textlineerkenner:
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-i', '--image', dest='inp1', default=None, help='directory of image.')
+    parser.add_argument('-i', '--image', dest='inp1', default=None, help='image filename.')
     parser.add_argument('-o', '--out', dest='inp2', default=None, help='directory to write output xml data.')
     parser.add_argument('-m', '--model', dest='inp3', default=None, help='directory of models.')
 
