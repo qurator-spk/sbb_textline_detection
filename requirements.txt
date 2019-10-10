@@ -1,0 +1,10 @@
+opencv-python
+numpy<=1.14.5
+matplotlib
+seaborn
+tqdm
+keras
+shapely
+scikit-learn
+tensorflow-gpu < 2.0
+scipy
