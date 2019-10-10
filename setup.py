@@ -21,6 +21,7 @@ setup(
     entry_points={
       'console_scripts': [
         "sbb_textline_detector=qurator.sbb_textline_detector:main",
+        "ocrd_sbb_textline_detector=qurator.sbb_textline_detector:ocrd_sbb_textline_detector",
       ]
     },
     python_requires='>=3.6.0',

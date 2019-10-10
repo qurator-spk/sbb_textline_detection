@@ -35,16 +35,18 @@ __doc__ = \
 
 
 class textlineerkenner:
-    def __init__(self, image_dir, dir_out, dir_models):
+    def __init__(self, image_dir, dir_out, f_name, dir_models):
         self.image_dir = image_dir
         self.dir_out = dir_out
+        self.f_name = f_name
+        if self.f_name is None:
+            try:
+                self.f_name = image_dir.split('/')[len(image_dir.split('/')) - 1]
+                self.f_name = self.f_name.split('.')[0]
+                print(self.f_name)
+            except:
+                self.f_name = self.f_name.split('.')[0]
         self.dir_models = dir_models
-        try:
-            self.f_name = image_dir.split('/')[len(image_dir.split('/')) - 1]
-            self.f_name = self.f_name.split('.')[0]
-            print(self.f_name)
-        except:
-            self.f_name = self.f_name.split('.')[0]
         self.kernel = np.ones((5, 5), np.uint8)
         self.model_page_dir = dir_models + '/model_page.h5'
         self.model_region_dir = dir_models + '/model_strukturerkennung.h5'
@@ -365,6 +367,7 @@ class textlineerkenner:
         return img_r
 
     def get_image_and_scales(self):
+        print(self.image_dir)
         self.image = cv2.imread(self.image_dir)
         self.height_org = self.image.shape[0]
         self.width_org = self.image.shape[1]
@@ -1298,7 +1301,7 @@ class textlineerkenner:
             unireg.text = ' '
 
         tree = ET.ElementTree(data)
-        tree.write(dir_of_image + self.f_name + ".xml")
+        tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
 
     def run(self):
         self.get_image_and_scales()
@@ -1307,7 +1310,7 @@ class textlineerkenner:
         boxes,contours=self.get_text_region_contours_and_boxes(text_regions)
         self.get_all_image_patches_based_on_text_regions(boxes,image_page)
         textline_mask_tot=self.textline_contours(image_page)
-        
+
         self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
         self.get_slopes_for_each_text_region(contours)
         self.deskew_textline_patches(contours, boxes)
@@ -1321,7 +1324,7 @@ class textlineerkenner:
 def main(image, out, model):
     possibles = globals()  # XXX unused?
     possibles.update(locals())
-    x = textlineerkenner(image, out, model)
+    x = textlineerkenner(image, out, None, model)
     x.run()
 
 
