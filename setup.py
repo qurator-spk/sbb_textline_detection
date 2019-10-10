@@ -20,7 +20,7 @@ setup(
     install_requires=install_requires,
     entry_points={
       'console_scripts': [
-        "text_line_recognition=main:main",
+        "sbb_textline_detector=qurator.sbb_textline_detector:main",
       ]
     },
     python_requires='>=3.6.0',
