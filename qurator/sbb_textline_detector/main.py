@@ -23,7 +23,7 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import xml.etree.ElementTree as ET
 import warnings
-import argparse
+import click
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -1314,18 +1314,14 @@ class textlineerkenner:
         self.write_into_page_xml(contours, page_coord, self.dir_out)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-i', '--image', dest='inp1', default=None, help='image filename.')
-    parser.add_argument('-o', '--out', dest='inp2', default=None, help='directory to write output xml data.')
-    parser.add_argument('-m', '--model', dest='inp3', default=None, help='directory of models.')
-
-    options = parser.parse_args()
-
-    possibles = globals()
+@click.command()
+@click.option('--image', '-i', help='image filename', type=click.Path(exists=True, dir_okay=False))
+@click.option('--out', '-o', help='directory to write output xml data', type=click.Path(exists=True, file_okay=False))
+@click.option('--model', '-m', help='directory of models', type=click.Path(exists=True, file_okay=False))
+def main(image, out, model):
+    possibles = globals()  # XXX unused?
     possibles.update(locals())
-    x = textlineerkenner(options.inp1, options.inp2, options.inp3)
+    x = textlineerkenner(image, out, model)
     x.run()
 
 
