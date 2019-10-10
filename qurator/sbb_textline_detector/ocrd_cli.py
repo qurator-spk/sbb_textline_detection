@@ -54,7 +54,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                  file_grp=self.output_file_grp,
                  pageId=page_id,
                  mimetype='application/vnd.prima.page+xml',
-                 local_filename=self.output_file_grp + '/' + file_id)
+                 local_filename=os.path.join(self.output_file_grp, file_id) + '.xml')
 
 
 if __name__ == '__main__':
