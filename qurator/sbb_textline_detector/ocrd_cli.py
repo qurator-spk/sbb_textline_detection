@@ -50,7 +50,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             x.run()
 
             self.workspace.add_file(
-                 ID=file_id + '.xml',
+                 ID=file_id,
                  file_grp=self.output_file_grp,
                  pageId=page_id,
                  mimetype='application/vnd.prima.page+xml',
