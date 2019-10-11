@@ -36,7 +36,7 @@ __doc__ = \
 
 class textlineerkenner:
     def __init__(self, image_dir, dir_out, f_name, dir_models):
-        self.image_dir = image_dir
+        self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
         self.f_name = f_name
         if self.f_name is None:
