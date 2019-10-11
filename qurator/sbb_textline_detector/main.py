@@ -1190,7 +1190,7 @@ class textlineerkenner:
             # img_v=cv2.fillPoly(img_v, pts =found_polygons, color=(255,255,255))
             # sumi=np.sum(np.sum(self.all_text_images[jj],axis=2),axis=1)
 
-    def write_into_page_xml(self, contours, page_coord, dir_of_image):
+    def write_into_page_xml(self, contours, page_coord):
 
         found_polygons_text_region = contours
         data = ET.Element('PcGts')
@@ -1299,7 +1299,7 @@ class textlineerkenner:
             unireg.text = ' '
 
         tree = ET.ElementTree(data)
-        tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
+        tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
 
     def run(self):
         self.get_image_and_scales()
@@ -1312,7 +1312,7 @@ class textlineerkenner:
         self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
         self.get_slopes_for_each_text_region(contours)
         self.deskew_textline_patches(contours, boxes)
-        self.write_into_page_xml(contours, page_coord, self.dir_out)
+        self.write_into_page_xml(contours, page_coord)
 
 
 @click.command()
