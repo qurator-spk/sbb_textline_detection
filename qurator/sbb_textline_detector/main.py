@@ -43,7 +43,6 @@ class textlineerkenner:
             try:
                 self.f_name = image_dir.split('/')[len(image_dir.split('/')) - 1]
                 self.f_name = self.f_name.split('.')[0]
-                print(self.f_name)
             except:
                 self.f_name = self.f_name.split('.')[0]
         self.dir_models = dir_models
@@ -367,7 +366,6 @@ class textlineerkenner:
         return img_r
 
     def get_image_and_scales(self):
-        print(self.image_dir)
         self.image = cv2.imread(self.image_dir)
         self.height_org = self.image.shape[0]
         self.width_org = self.image.shape[1]
