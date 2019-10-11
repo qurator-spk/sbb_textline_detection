@@ -18,6 +18,9 @@ setup(
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
     install_requires=install_requires,
+    package_data={
+        '': ['*.json'],
+    },
     entry_points={
       'console_scripts': [
         "sbb_textline_detector=qurator.sbb_textline_detector:main",
