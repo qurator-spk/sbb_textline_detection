@@ -1155,7 +1155,93 @@ class textlineerkenner:
             elif slope_for_all == 999:
                 slope_for_all = slope_biggest
             self.slopes.append(slope_for_all)
+    def order_of_regions(self, textline_mask,contours_main):
+        mada_n=textline_mask.sum(axis=1)
+        y=mada_n[:]
 
+        y_help=np.zeros(len(y)+40)
+        y_help[20:len(y)+20]=y
+        x=np.array( range(len(y)) )
+
+
+        peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+        
+
+        sigma_gaus=8
+        z= gaussian_filter1d(y_help, sigma_gaus)
+        zneg_rev=-y_help+np.max(y_help)
+
+        zneg=np.zeros(len(zneg_rev)+40)
+        zneg[20:len(zneg_rev)+20]=zneg_rev
+        zneg= gaussian_filter1d(zneg, sigma_gaus)
+
+
+        peaks, _ = find_peaks(z, height=0)
+        peaks_neg, _ = find_peaks(zneg, height=0)
+
+        peaks_neg=peaks_neg-20-20
+        peaks=peaks-20
+        
+        if contours_main!=None:
+            areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+            M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+            cx_main=[(M_main[j]['m10']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
+            cy_main=[(M_main[j]['m01']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
+            x_min_main=np.array([np.min(contours_main[j][:,0,0]) for j in range(len(contours_main))])
+            x_max_main=np.array([np.max(contours_main[j][:,0,0]) for j in range(len(contours_main))])
+
+            y_min_main=np.array([np.min(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+            y_max_main=np.array([np.max(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+
+        
+        if contours_main!=None:
+            indexer_main=np.array(range(len(contours_main)))
+
+        if contours_main!=None:
+            len_main=len(contours_main)
+        else:
+            len_main=0
+        
+        matrix_of_orders=np.zeros((len_main,5))
+        matrix_of_orders[:,0]=np.array( range( len_main ) )
+        matrix_of_orders[:len_main,1]=1
+        matrix_of_orders[len_main:,1]=2
+        matrix_of_orders[:len_main,2]=cx_main
+        matrix_of_orders[:len_main,3]=cy_main
+        matrix_of_orders[:len_main,4]=np.array( range( len_main ) )
+        
+        final_indexers_sorted=[]
+        for i in range(len(peaks_neg)-1):
+            top=peaks_neg[i]
+            down=peaks_neg[i+1]
+            
+            indexes_in=matrix_of_orders[:,0][(matrix_of_orders[:,3]>=top) & ((matrix_of_orders[:,3]<down))]
+            cxs_in=matrix_of_orders[:,2][(matrix_of_orders[:,3]>=top) & ((matrix_of_orders[:,3]<down))]
+            
+            sorted_inside=np.argsort(cxs_in)
+            ind_in_int=indexes_in[sorted_inside]
+            
+            for j in range(len(ind_in_int)):
+                final_indexers_sorted.append(int(ind_in_int[j]) )
+        
+        return final_indexers_sorted, matrix_of_orders
+
+            
+
+    
+    def order_and_id_of_texts(self, found_polygons_text_region ,matrix_of_orders ,indexes_sorted ):
+        id_of_texts=[]
+        order_of_texts=[]
+        index_b=0
+        for mm in range(len(found_polygons_text_region)):
+            id_of_texts.append('r'+str(index_b) )
+            index_matrix=matrix_of_orders[:,0][( matrix_of_orders[:,1]==1 ) & ( matrix_of_orders[:,4]==mm ) ]
+            order_of_texts.append(np.where(indexes_sorted == index_matrix)[0][0])
+
+            index_b+=1
+            
+        order_of_texts
+        return order_of_texts, id_of_texts
     def deskew_textline_patches(self, contours, boxes):
         self.all_text_region_processed = []
         self.all_found_texline_polygons = []
@@ -1189,7 +1275,171 @@ class textlineerkenner:
             # img_v=np.zeros(text_patch_processed.shape)
             # img_v=cv2.fillPoly(img_v, pts =found_polygons, color=(255,255,255))
             # sumi=np.sum(np.sum(self.all_text_images[jj],axis=2),axis=1)
+    def write_into_page_xml(self,contours,page_coord,dir_of_image,order_of_texts , id_of_texts):
 
+        found_polygons_text_region=contours
+
+
+        # create the file structure
+        data = ET.Element('PcGts')
+
+        data.set('xmlns',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        data.set('xmlns:xsi',"http://www.w3.org/2001/XMLSchema-instance")
+        data.set('xsi:schemaLocation',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        #data.set('http',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2018-07-15/pagecontent.xsd")
+
+
+
+        metadata=ET.SubElement(data,'Metadata')
+
+        author=ET.SubElement(metadata, 'Creator')
+        author.text = 'Vahid'
+
+
+        created=ET.SubElement(metadata, 'Created')
+        created.text = '2019-06-17T18:15:12'
+
+        changetime=ET.SubElement(metadata, 'LastChange')
+        changetime.text = '2019-06-17T18:15:12' 
+
+
+
+        page=ET.SubElement(data,'Page')
+
+        page.set('imageFilename',self.f_name+'.tif')
+        page.set('imageHeight',str(self.height_org) ) 
+        page.set('imageWidth',str(self.width_org) )
+        page.set('type',"content")
+        page.set('readingDirection',"left-to-right")
+        page.set('textLineOrder',"top-to-bottom" )
+
+
+        """
+        page_print_sub=ET.SubElement(page, 'PrintSpace')
+        coord_page = ET.SubElement(page_print_sub, 'Coords')
+        points_page_print=''
+
+        for lmm in range(len(cont_page[0])):
+            if len(cont_page[0][lmm])==2:
+                points_page_print=points_page_print+str( int( (cont_page[0][lmm][0])/self.scale_x ) )
+                points_page_print=points_page_print+','
+                points_page_print=points_page_print+str( int( (cont_page[0][lmm][1])/self.scale_y ) )
+            else:
+                points_page_print=points_page_print+str( int((cont_page[0][lmm][0][0])/self.scale_x) )
+                points_page_print=points_page_print+','
+                points_page_print=points_page_print+str( int((cont_page[0][lmm][0][1])/self.scale_y) )
+
+            if lmm<(len(cont_page[0])-1):
+                points_page_print=points_page_print+' '
+        #print(points_co)
+        coord_page.set('points',points_page_print)
+        """
+
+
+
+        region_order=ET.SubElement(page, 'ReadingOrder')
+        region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
+        
+        region_order_sub.set('id',"ro357564684568544579089")
+
+        args_sort=np.argsort(order_of_texts)
+        for vj in args_sort:
+            name="coord_text_"+str(vj)
+            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
+            name.set('index',str(order_of_texts[vj]) )
+            name.set('regionRef',id_of_texts[vj])
+
+
+        id_indexer=0
+        id_indexer_l=0
+
+        for mm in range(len(found_polygons_text_region)):
+            textregion=ET.SubElement(page, 'TextRegion')
+
+            textregion.set('id','r'+str(id_indexer))
+            id_indexer+=1
+            
+            textregion.set('type','paragraph')
+            #if mm==0:
+            #    textregion.set('type','heading')
+            #else:
+            #    textregion.set('type','paragraph')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            
+            points_co=''
+            for lmm in range(len(found_polygons_text_region[mm])):
+                if len(found_polygons_text_region[mm][lmm])==2:
+                    points_co=points_co+str( int( (found_polygons_text_region[mm][lmm][0] +page_coord[2])/self.scale_x ) )
+                    points_co=points_co+','
+                    points_co=points_co+str( int( (found_polygons_text_region[mm][lmm][1] +page_coord[0])/self.scale_y ) )
+                else:
+                    points_co=points_co+str( int((found_polygons_text_region[mm][lmm][0][0] +page_coord[2])/self.scale_x) )
+                    points_co=points_co+','
+                    points_co=points_co+str( int((found_polygons_text_region[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
+
+                if lmm<(len(found_polygons_text_region[mm])-1):
+                    points_co=points_co+' '
+            #print(points_co)
+            coord_text.set('points',points_co)
+            
+            
+            
+            for j in range(len(self.all_found_texline_polygons[mm])):
+
+                textline=ET.SubElement(textregion, 'TextLine')
+                
+                textline.set('id','l'+str(id_indexer_l))
+                
+                id_indexer_l+=1
+                
+
+                coord = ET.SubElement(textline, 'Coords')
+
+                texteq=ET.SubElement(textline, 'TextEquiv')
+
+                uni=ET.SubElement(texteq, 'Unicode')
+                uni.text = ' ' 
+
+                #points = ET.SubElement(coord, 'Points') 
+
+                points_co=''
+                for l in range(len(self.all_found_texline_polygons[mm][j])):
+                    #point = ET.SubElement(coord, 'Point') 
+
+
+
+                    #point.set('x',str(found_polygons[j][l][0]))  
+                    #point.set('y',str(found_polygons[j][l][1]))
+                    if len(self.all_found_texline_polygons[mm][j][l])==2:
+                        points_co=points_co+str( int( (self.all_found_texline_polygons[mm][j][l][0] +page_coord[2]
+                                                +self.all_box_coord[mm][2])/self.scale_x) )
+                        points_co=points_co+','
+                        points_co=points_co+str( int( (self.all_found_texline_polygons[mm][j][l][1] +page_coord[0]
+                                                +self.all_box_coord[mm][0])/self.scale_y) )
+                    else:
+                        points_co=points_co+str( int( ( self.all_found_texline_polygons[mm][j][l][0][0] +page_coord[2]
+                                                +self.all_box_coord[mm][2])/self.scale_x ) )
+                        points_co=points_co+','
+                        points_co=points_co+str( int( ( self.all_found_texline_polygons[mm][j][l][0][1] +page_coord[0]
+                                                +self.all_box_coord[mm][0])/self.scale_y) ) 
+
+                    if l<(len(self.all_found_texline_polygons[mm][j])-1):
+                        points_co=points_co+' '
+                #print(points_co)
+                coord.set('points',points_co)
+                
+            texteqreg=ET.SubElement(textregion, 'TextEquiv')
+
+            unireg=ET.SubElement(texteqreg, 'Unicode')
+            unireg.text = ' ' 
+
+
+
+            
+
+        tree = ET.ElementTree(data)
+        tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
+    """ 
     def write_into_page_xml(self, contours, page_coord):
 
         found_polygons_text_region = contours
@@ -1300,7 +1550,7 @@ class textlineerkenner:
 
         tree = ET.ElementTree(data)
         tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
-
+    """ 
     def run(self):
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
@@ -1308,11 +1558,14 @@ class textlineerkenner:
         boxes,contours=self.get_text_region_contours_and_boxes(text_regions)
         self.get_all_image_patches_based_on_text_regions(boxes,image_page)
         textline_mask_tot=self.textline_contours(image_page)
-
+        
+        indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
+        order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
+        
         self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
         self.get_slopes_for_each_text_region(contours)
         self.deskew_textline_patches(contours, boxes)
-        self.write_into_page_xml(contours, page_coord)
+        self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
 
 
 @click.command()
