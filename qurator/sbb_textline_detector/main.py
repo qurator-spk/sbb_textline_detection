@@ -1275,6 +1275,7 @@ class textlineerkenner:
             # img_v=np.zeros(text_patch_processed.shape)
             # img_v=cv2.fillPoly(img_v, pts =found_polygons, color=(255,255,255))
             # sumi=np.sum(np.sum(self.all_text_images[jj],axis=2),axis=1)
+    """
     def write_into_page_xml(self,contours,page_coord,dir_of_image,order_of_texts , id_of_texts):
 
         found_polygons_text_region=contours
@@ -1314,7 +1315,7 @@ class textlineerkenner:
         page.set('textLineOrder',"top-to-bottom" )
 
 
-        """
+        
         page_print_sub=ET.SubElement(page, 'PrintSpace')
         coord_page = ET.SubElement(page_print_sub, 'Coords')
         points_page_print=''
@@ -1333,7 +1334,7 @@ class textlineerkenner:
                 points_page_print=points_page_print+' '
         #print(points_co)
         coord_page.set('points',points_page_print)
-        """
+        
 
 
 
@@ -1550,7 +1551,7 @@ class textlineerkenner:
 
         tree = ET.ElementTree(data)
         tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
-    """ 
+    
     def run(self):
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
@@ -1559,13 +1560,13 @@ class textlineerkenner:
         self.get_all_image_patches_based_on_text_regions(boxes,image_page)
         textline_mask_tot=self.textline_contours(image_page)
         
-        indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
-        order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
+        #indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
+        #order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
         
         self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
         self.get_slopes_for_each_text_region(contours)
         self.deskew_textline_patches(contours, boxes)
-        self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
+        self.write_into_page_xml(contours,page_coord,self.dir_out )
 
 
 @click.command()
