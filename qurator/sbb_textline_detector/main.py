@@ -1339,7 +1339,7 @@ class textlineerkenner:
 
         page=ET.SubElement(data,'Page')
 
-        page.set('imageFilename',self.f_name+'.tif')
+        page.set('imageFilename', self.image_dir)
         page.set('imageHeight',str(self.height_org) ) 
         page.set('imageWidth',str(self.width_org) )
         page.set('type',"content")
