@@ -1155,6 +1155,7 @@ class textlineerkenner:
             elif slope_for_all == 999:
                 slope_for_all = slope_biggest
             self.slopes.append(slope_for_all)
+
     def order_of_regions(self, textline_mask,contours_main):
         mada_n=textline_mask.sum(axis=1)
         y=mada_n[:]
@@ -1168,6 +1169,7 @@ class textlineerkenner:
         
 
         sigma_gaus=8
+
         z= gaussian_filter1d(y_help, sigma_gaus)
         zneg_rev=-y_help+np.max(y_help)
 
@@ -1182,6 +1184,8 @@ class textlineerkenner:
         peaks_neg=peaks_neg-20-20
         peaks=peaks-20
         
+
+        
         if contours_main!=None:
             areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
             M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -1192,38 +1196,66 @@ class textlineerkenner:
 
             y_min_main=np.array([np.min(contours_main[j][:,0,1]) for j in range(len(contours_main))])
             y_max_main=np.array([np.max(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+            #print(contours_main[0],np.shape(contours_main[0]),contours_main[0][:,0,0])
 
+
+        
         
         if contours_main!=None:
             indexer_main=np.array(range(len(contours_main)))
 
+        
         if contours_main!=None:
             len_main=len(contours_main)
         else:
             len_main=0
+
         
         matrix_of_orders=np.zeros((len_main,5))
+        
         matrix_of_orders[:,0]=np.array( range( len_main ) )
+        
         matrix_of_orders[:len_main,1]=1
         matrix_of_orders[len_main:,1]=2
+        
         matrix_of_orders[:len_main,2]=cx_main
+
+        
         matrix_of_orders[:len_main,3]=cy_main
+
+        
+        
         matrix_of_orders[:len_main,4]=np.array( range( len_main ) )
+        #matrix_of_orders[len_main:,4]=np.array( range( len_head ) )
+        
+        #print(matrix_of_orders)
+        
+        peaks_neg_new=[]
+        
+        peaks_neg_new.append(0)
+        for iii in range(len(peaks_neg)):
+            peaks_neg_new.append(peaks_neg[iii])
+            
+        peaks_neg_new.append(textline_mask.shape[0])
+        
         
         final_indexers_sorted=[]
-        for i in range(len(peaks_neg)-1):
-            top=peaks_neg[i]
-            down=peaks_neg[i+1]
+        for i in range(len(peaks_neg_new)-1):
+            top=peaks_neg_new[i]
+            down=peaks_neg_new[i+1]
             
             indexes_in=matrix_of_orders[:,0][(matrix_of_orders[:,3]>=top) & ((matrix_of_orders[:,3]<down))]
             cxs_in=matrix_of_orders[:,2][(matrix_of_orders[:,3]>=top) & ((matrix_of_orders[:,3]<down))]
             
             sorted_inside=np.argsort(cxs_in)
+            
             ind_in_int=indexes_in[sorted_inside]
             
             for j in range(len(ind_in_int)):
                 final_indexers_sorted.append(int(ind_in_int[j]) )
         
+        
+                
         return final_indexers_sorted, matrix_of_orders
 
             
@@ -1275,7 +1307,7 @@ class textlineerkenner:
             # img_v=np.zeros(text_patch_processed.shape)
             # img_v=cv2.fillPoly(img_v, pts =found_polygons, color=(255,255,255))
             # sumi=np.sum(np.sum(self.all_text_images[jj],axis=2),axis=1)
-    """
+    
     def write_into_page_xml(self,contours,page_coord,dir_of_image,order_of_texts , id_of_texts):
 
         found_polygons_text_region=contours
@@ -1315,7 +1347,7 @@ class textlineerkenner:
         page.set('textLineOrder',"top-to-bottom" )
 
 
-        
+        """
         page_print_sub=ET.SubElement(page, 'PrintSpace')
         coord_page = ET.SubElement(page_print_sub, 'Coords')
         points_page_print=''
@@ -1334,7 +1366,7 @@ class textlineerkenner:
                 points_page_print=points_page_print+' '
         #print(points_co)
         coord_page.set('points',points_page_print)
-        
+        """
 
 
 
@@ -1440,7 +1472,7 @@ class textlineerkenner:
 
         tree = ET.ElementTree(data)
         tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
-    """ 
+    """
     def write_into_page_xml(self, contours, page_coord):
 
         found_polygons_text_region = contours
@@ -1551,6 +1583,7 @@ class textlineerkenner:
 
         tree = ET.ElementTree(data)
         tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
+        """
     
     def run(self):
         self.get_image_and_scales()
@@ -1560,13 +1593,13 @@ class textlineerkenner:
         self.get_all_image_patches_based_on_text_regions(boxes,image_page)
         textline_mask_tot=self.textline_contours(image_page)
         
-        #indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
-        #order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
+        indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
+        order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
         
         self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
         self.get_slopes_for_each_text_region(contours)
         self.deskew_textline_patches(contours, boxes)
-        self.write_into_page_xml(contours,page_coord,self.dir_out )
+        self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
 
 
 @click.command()
