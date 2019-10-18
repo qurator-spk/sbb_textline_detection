@@ -51,7 +51,7 @@ class textlineerkenner:
         self.model_region_dir = dir_models + '/model_strukturerkennung.h5'
         self.model_textline_dir = dir_models + '/model_textline.h5'
 
-    def find_polugons_size_filter(self, contours, median_area, scaler_up=1.2, scaler_down=0.8):
+    def find_polygons_size_filter(self, contours, median_area, scaler_up=1.2, scaler_down=0.8):
         found_polygons_early = list()
 
         for c in contours:
@@ -992,7 +992,7 @@ class textlineerkenner:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        contours_slope = contours  # self.find_polugons_size_filter(contours,median_area=median_area,scaler_up=100,scaler_down=0.5)
+        contours_slope = contours  # self.find_polygons_size_filter(contours,median_area=median_area,scaler_up=100,scaler_down=0.5)
 
         if len(contours_slope) > 0:
             for jv in range(len(contours_slope)):
