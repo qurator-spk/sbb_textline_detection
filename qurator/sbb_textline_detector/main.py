@@ -683,6 +683,12 @@ class textlineerkenner:
 
             y_predi = mask_true
             y_predi = cv2.resize(y_predi, (img_org.shape[1], img_org.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+        session_textline.close()
+
+        del model_textline
+        del session_textline
+        gc.collect()
         return y_predi
 
     def get_textlines_for_each_textregions(self, textline_mask_tot, boxes):
