@@ -1607,6 +1607,9 @@ class textlineerkenner:
         self.deskew_textline_patches(contours, boxes)
         self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
 
+        # Destroy the current Keras session/graph to free memory
+        K.clear_session()
+
 
 @click.command()
 @click.option('--image', '-i', help='image filename', type=click.Path(exists=True, dir_okay=False))
