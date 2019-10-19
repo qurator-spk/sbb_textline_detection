@@ -10,4 +10,4 @@ tensorflow-gpu < 2.0
 scipy
 click
 ocrd >= 1.0.0b19
-flair
+
