@@ -4,7 +4,9 @@ import os
 import click
 from ocrd import Processor
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
-from ocrd_utils import concat_padded, getLogger
+from ocrd_modelfactory import page_from_file
+from ocrd_models import OcrdFile
+from ocrd_utils import concat_padded, getLogger, MIMETYPE_PAGE
 from pkg_resources import resource_string
 
 from qurator.sbb_textline_detector import textlineerkenner
@@ -32,12 +34,22 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             file_id = concat_padded(self.output_file_grp, n)
         return file_id
 
+    def _resolve_image_file(self, input_file: OcrdFile) -> str:
+        if input_file.mimetype == MIMETYPE_PAGE:
+            pcgts = page_from_file(self.workspace.download_file(input_file))
+            page = pcgts.get_Page()
+            image_file = page.imageFilename
+        else:
+            image_file = input_file.local_filename
+        return image_file
+
     def process(self):
         for n, page_id in enumerate(self.workspace.mets.physical_pages):
-            image_file = self.workspace.mets.find_files(fileGrp=self.input_file_grp, pageId=page_id)[0]
-            log.info("INPUT FILE %i / %s", n, image_file)
+            input_file = self.workspace.mets.find_files(fileGrp=self.input_file_grp, pageId=page_id)[0]
+            log.info("INPUT FILE %i / %s", n, input_file)
 
-            file_id = self._make_file_id(image_file, self.output_file_grp, n)
+            file_id = self._make_file_id(input_file, self.output_file_grp, n)
+            image_file = self._resolve_image_file(input_file)
 
             # Process the files
             try:
@@ -46,7 +58,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                 pass
 
             model = self.parameter['model']
-            x = textlineerkenner(image_file.local_filename, self.output_file_grp, file_id, model)
+            x = textlineerkenner(image_file, self.output_file_grp, file_id, model)
             x.run()
 
             self.workspace.add_file(
