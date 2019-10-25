@@ -696,16 +696,16 @@ class textlineerkenner:
         if img.shape[1] < img_width_textline:
             img = cv2.resize(img, (img_height_textline, img.shape[0]), interpolation=cv2.INTER_NEAREST)
 
-        margin = True
+        margin = False
         if not margin:
 
             width = img_width_textline
             height = img_height_textline
 
-            img = self.otsu_copy(img)
+            #img = self.otsu_copy(img)
             img = img.astype(np.uint8)
             # for _ in range(4):
-            # img = cv2.medianBlur(img,5)
+            img = cv2.medianBlur(img,5)
             img = img / 255.0
 
             img_h = img.shape[0]
