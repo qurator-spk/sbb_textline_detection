@@ -416,7 +416,7 @@ class textlineerkenner:
 
         img = self.otsu_copy(self.image)
 
-        for ii in range(60):
+        for ii in range(1):
             img = cv2.GaussianBlur(img, (15, 15), 0)
 
 
@@ -487,7 +487,7 @@ class textlineerkenner:
 
             img = self.otsu_copy(img)
             img = img.astype(np.uint8)
-            ###img = cv2.medianBlur(img,5)
+            img = cv2.medianBlur(img,5)
 
             # img = cv2.medianBlur(img,5)
 
@@ -665,22 +665,22 @@ class textlineerkenner:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        boxes = []
+        self.boxes = []
         contours_new = []
         for jj in range(len(contours)):
             if hirarchy[0][jj][2] == -1:
                 x, y, w, h = cv2.boundingRect(contours[jj])
-                boxes.append([x, y, w, h])
+                self.boxes.append([x, y, w, h])
                 contours_new.append(contours[jj])
 
-        return boxes, contours_new
+        return contours_new
 
-    def get_all_image_patches_based_on_text_regions(self, boxes, image_page):
+    def get_all_image_patches_coordination(self, image_page):
         self.all_box_coord=[]
-        for jk in range(len(boxes)):
-            crop_img,crop_coor=self.crop_image_inside_box(boxes[jk],image_page)
+        for jk in range(len(self.boxes)):
+            _,crop_coor=self.crop_image_inside_box(self.boxes[jk],image_page)
             self.all_box_coord.append(crop_coor) 
-        del crop_img
+        
 
     def textline_contours(self, img):
         model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
@@ -702,7 +702,7 @@ class textlineerkenner:
             width = img_width_textline
             height = img_height_textline
 
-            #img = self.otsu_copy(img)
+            img = self.otsu_copy(img)
             img = img.astype(np.uint8)
             # for _ in range(4):
             img = cv2.medianBlur(img,5)
@@ -915,8 +915,8 @@ class textlineerkenner:
             self.all_text_region_raw.append(crop_img[:, :, 0])
             self.area_of_cropped.append(crop_img.shape[0] * crop_img.shape[1])
 
-    def seperate_lines(self, mada, contour_text_interest, thetha):
-        (h, w) = mada.shape[:2]
+    def seperate_lines(self, img_path, contour_text_interest, thetha):
+        (h, w) = img_path.shape[:2]
         center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
         x_d = M[0, 2]
@@ -932,13 +932,13 @@ class textlineerkenner:
         y_cont = y_cont - np.min(y_cont)
 
         x_min_cont = 0
-        x_max_cont = mada.shape[1]
+        x_max_cont = img_path.shape[1]
         y_min_cont = 0
-        y_max_cont = mada.shape[0]
+        y_max_cont = img_path.shape[0]
 
         xv = np.linspace(x_min_cont, x_max_cont, 1000)
 
-        mada_n = mada.sum(axis=1)
+        mada_n = img_path.sum(axis=1)
 
         first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
 
@@ -988,11 +988,11 @@ class textlineerkenner:
                 point_down_narrow = peaks[jj] + first_nonzero + int(
                     1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
 
-                if point_down >= mada.shape[0]:
-                    point_down = mada.shape[0] - 2
+                if point_down >= img_path.shape[0]:
+                    point_down = img_path.shape[0] - 2
 
-                if point_down_narrow >= mada.shape[0]:
-                    point_down_narrow = mada.shape[0] - 2
+                if point_down_narrow >= img_path.shape[0]:
+                    point_down_narrow = img_path.shape[0] - 2
 
                 distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
                              for mj in range(len(xv))]
@@ -1088,8 +1088,8 @@ class textlineerkenner:
                     point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next)
                 elif jj == 1:
                     point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next)
-                    if point_down >= mada.shape[0]:
-                        point_down = mada.shape[0] - 2
+                    if point_down >= img_path.shape[0]:
+                        point_down = img_path.shape[0] - 2
                     point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next)
 
                 distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
@@ -1148,8 +1148,8 @@ class textlineerkenner:
                     dis_to_next = peaks[jj] - peaks[jj - 1]
                     # point_down=peaks[jj]+first_nonzero+int(1./3*dis_to_next)
                     point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next)
-                    if point_down >= mada.shape[0]:
-                        point_down = mada.shape[0] - 2
+                    if point_down >= img_path.shape[0]:
+                        point_down = img_path.shape[0] - 2
                     # point_up=peaks[jj]+first_nonzero-int(1./3*dis_to_next)
                     point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next)
                 else:
@@ -1191,6 +1191,8 @@ class textlineerkenner:
                     point_up_rot1=0
                 if point_up_rot2<0:
                     point_up_rot2=0
+                    
+
 
                 textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
                                                     [int(x_max_rot2), int(point_up_rot2)],
@@ -1202,13 +1204,27 @@ class textlineerkenner:
                                                 [int(x_max), int(point_down)],
                                                 [int(x_min), int(point_down)]]))
 
-        mada_new = np.zeros((mada.shape[0], mada.shape[1], 3))
+        mada_new = np.zeros((img_path.shape[0], img_path.shape[1], 3))
         mada_new = cv2.fillPoly(mada_new, pts=textline_boxes, color=(255, 255, 255))
 
         mada_new = mada_new.astype(np.uint8)
         return mada_new, peaks, textline_boxes_rot
+    
+    def ruturn_rotated_contours(self,slope,img_patch):
+            dst = self.rotate_image(img_patch, slope)
+            dst = dst.astype(np.uint8)
+            dst = dst[:, :, 0]
+            dst[dst != 0] = 1
+            
+            imgray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    def textline_contours_postprocessing(self, textline_mask, img_patch, slope, contour_text_interest, box_ind):
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            return contours
+            
+    def textline_contours_postprocessing(self, textline_mask, slope, contour_text_interest, box_ind):
 
         textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
 
@@ -1243,24 +1259,7 @@ class textlineerkenner:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        contours_slope = contours  # self.find_polygons_size_filter(contours,median_area=median_area,scaler_up=100,scaler_down=0.5)
-
-        if len(contours_slope) > 0:
-            for jv in range(len(contours_slope)):
-                new_poly = list(contours_slope[jv])
-                if jv == 0:
-                    merged_all = new_poly
-                else:
-                    merged_all = merged_all + new_poly
-
-            merge = np.array(merged_all)
-
-            img_in = np.zeros(textline_mask.shape)
-            img_p_in = cv2.fillPoly(img_in, pts=[merge], color=(255, 255, 255))
-
-            rect = cv2.minAreaRect(merge)
-            box = cv2.boxPoints(rect)
-            box = np.int0(box)
+        if len(contours) > 0:
 
             dst = self.rotate_image(textline_mask, slope)
             dst = dst[:, :, 0]
@@ -1275,6 +1274,8 @@ class textlineerkenner:
             img_contour = np.zeros((box_ind[3], box_ind[2], 3))
             img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=(255, 255, 255))
 
+
+ 
             img_contour_rot = self.rotate_image(img_contour, slope)
 
             img_contour_rot = img_contour_rot.astype(np.uint8)
@@ -1285,10 +1286,10 @@ class textlineerkenner:
             len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
             ind_big_con = np.argmax(len_con_text_rot)
 
-            textline_maskt = textline_mask[:, :, 0]
-            textline_maskt[textline_maskt != 0] = 1
+
 
             sep_img, _, contours_rotated_clean = self.seperate_lines(dst, contours_text_rot[ind_big_con], slope)
+
 
             dst = self.rotate_image(sep_img, -slope)
 
@@ -1510,43 +1511,46 @@ class textlineerkenner:
 
         return ang_int
 
-    def get_slopes_for_each_text_region(self, contours):
+    def get_slopes_for_each_text_region(self, contours,textline_mask_tot):
 
         # first lets find slope for biggest patch of text region (slope of deskewing)
         
-        denoised=None
-        index_max_area = np.argmax(self.area_of_cropped)
-        img_int_p=self.all_text_region_raw[index_max_area]
-        textline_con=self.return_contours_of_image(img_int_p)
-        textline_con_fil=self.filter_contours_area_of_image(img_int_p,textline_con,denoised,max_area=1,min_area=0.0008)
-        y_diff_mean=self.find_contours_mean_y_diff(textline_con_fil)
+
+        #index_max_area = np.argmax(self.area_of_cropped)
+        #img_int_p=self.all_text_region_raw[index_max_area]
+        #textline_con=self.return_contours_of_image(img_int_p)
+        #textline_con_fil=self.filter_contours_area_of_image(img_int_p,textline_con,denoised,max_area=1,min_area=0.0008)
+        #y_diff_mean=self.find_contours_mean_y_diff(textline_con_fil)
         
-        sigma_des=int(  y_diff_mean * (4./40.0) )
+        #sigma_des=int(  y_diff_mean * (4./40.0) )
         #refrence : sigma =4 for diff=40
-        if sigma_des<1:
-            sigma_des=1
+        #if sigma_des<1:
+        #    sigma_des=1
 
             
-        img_int_p[img_int_p>0]=1
+        #img_int_p[img_int_p>0]=1
         
         
-        slope_biggest=self.return_deskew_slop(img_int_p,sigma_des)
+        slope_biggest=0#self.return_deskew_slop(img_int_p,sigma_des)
         
         # this was the old method. By now it seems the new one works better. By the way more tests are required.
         #slope_biggest = self.textline_contours_to_get_slope_correctly(self.all_text_region_raw[index_max_area],
         #                                                              denoised, contours[index_max_area])
         
 
-        if np.abs(slope_biggest) > 20:
-            slope_biggest = 0
+        #if np.abs(slope_biggest) > 20:
+        #    slope_biggest = 0
 
         self.slopes = []
-        for mv in range(len(self.all_text_region_raw)):
-            img_int_p=self.all_text_region_raw[mv]
+        for mv in range(len(self.boxes)):
+            textline_mask_tot = cv2.erode(textline_mask_tot, self.kernel, iterations=1)
+            
+            crop_img, _ = self.crop_image_inside_box(self.boxes[mv],
+                                                                        np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             
             try:
-                textline_con=self.return_contours_of_image(img_int_p)
-                textline_con_fil=self.filter_contours_area_of_image(img_int_p,textline_con,denoised,max_area=1,min_area=0.0008)
+                textline_con=self.return_contours_of_image(crop_img)
+                textline_con_fil=self.filter_contours_area_of_image(crop_img,textline_con,denoised,max_area=1,min_area=0.0008)
                 y_diff_mean=self.find_contours_mean_y_diff(textline_con_fil)
                 
                 sigma_des=int(  y_diff_mean * (4./40.0) )
@@ -1554,22 +1558,22 @@ class textlineerkenner:
                 if sigma_des<1:
                     sigma_des=1
 
-                img_int_p[img_int_p>0]=1
-                slope_for_all=self.return_deskew_slop(img_int_p,sigma_des)
+                crop_img[crop_img>0]=1
+                slope_corresponding_textregion=self.return_deskew_slop(crop_img,sigma_des)
                 
                 #old method
-                #slope_for_all=self.textline_contours_to_get_slope_correctly(self.all_text_region_raw[mv],denoised,contours[mv])
+                #slope_corresponding_textregion=self.textline_contours_to_get_slope_correctly(self.all_text_region_raw[mv],denoised,contours[mv])
                 #text_patch_processed=textline_contours_postprocessing(gada)
                 
             except:
-                slope_for_all=999
+                slope_corresponding_textregion=999
                 
         
-            if np.abs(slope_for_all)>12.5 and slope_for_all!=999:
-                slope_for_all=slope_biggest
-            elif slope_for_all==999:
-                slope_for_all=slope_biggest
-            self.slopes.append(slope_for_all)
+            if np.abs(slope_corresponding_textregion)>12.5 and slope_corresponding_textregion!=999:
+                slope_corresponding_textregion=slope_biggest
+            elif slope_corresponding_textregion==999:
+                slope_corresponding_textregion=slope_biggest
+            self.slopes.append(slope_corresponding_textregion)
                 
 
     def order_of_regions(self, textline_mask,contours_main):
@@ -1687,17 +1691,19 @@ class textlineerkenner:
             
         order_of_texts
         return order_of_texts, id_of_texts
-    def deskew_textline_patches(self, contours, boxes):
+    def deskew_textline_patches(self, contours,textline_mask_tot):
         self.all_text_region_processed = []
         self.all_found_texline_polygons = []
         
-        denoised=None
-        
-        for jj in range(len(self.all_text_region_raw)):
 
-            text_patch_processed, cnt_clean_rot = self.textline_contours_postprocessing(self.all_text_region_raw[jj]
-                                                                                        , denoised, self.slopes[jj],
-                                                                                        contours[jj], boxes[jj])
+        for jj in range(len(self.boxes)):
+            
+            crop_img, _ = self.crop_image_inside_box(self.boxes[jj],
+                                                                        np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
+            
+            text_patch_processed, cnt_clean_rot = self.textline_contours_postprocessing(crop_img[:,:,0]
+                                                                                        , self.slopes[jj],
+                                                                                        contours[jj], self.boxes[jj])
             self.all_text_region_processed.append(text_patch_processed)
 
             text_patch_processed = text_patch_processed.astype(np.uint8)
@@ -1826,6 +1832,10 @@ class textlineerkenner:
     
                     coord = ET.SubElement(textline, 'Coords')
     
+                    texteq=ET.SubElement(textline, 'TextEquiv')
+    
+                    uni=ET.SubElement(texteq, 'Unicode')
+                    uni.text = ' ' 
     
                     #points = ET.SubElement(coord, 'Points') 
     
@@ -1855,6 +1865,10 @@ class textlineerkenner:
                     #print(points_co)
                     coord.set('points',points_co)
                     
+                texteqreg=ET.SubElement(textregion, 'TextEquiv')
+    
+                unireg=ET.SubElement(texteqreg, 'Unicode')
+                unireg.text = ' ' 
 
 
 
@@ -1867,34 +1881,46 @@ class textlineerkenner:
     def run(self):
         
         #get image and sclaes, then extract the page of scanned image
+        t1=time.time()
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
+
         
         ##########  
         K.clear_session()
         gc.collect()
+        t2=time.time()
+        
         
         # extract text regions and corresponding contours and surrounding box
         text_regions=self.extract_text_regions(image_page)
-        boxes,contours=self.get_text_region_contours_and_boxes(text_regions)
+        contours=self.get_text_region_contours_and_boxes(text_regions)
+        
+
         
         ##########  
         K.clear_session()
         gc.collect()
         
+        t3=time.time()
+
+        
         if len(contours)>0:
             
-            self.get_all_image_patches_based_on_text_regions(boxes,image_page)
+            self.get_all_image_patches_coordination(image_page)
             
             ##########  
             gc.collect()
             
             # extracting textlines using segmentation
             textline_mask_tot=self.textline_contours(image_page)
-            
+            #plt.imshow(textline_mask_tot)
+            #plt.show()
             ##########  
             K.clear_session()
             gc.collect()
+            
+            t4=time.time()
             
             # get orders of each textregion. This method by now only works for one column documents. 
             indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
@@ -1903,24 +1929,31 @@ class textlineerkenner:
             ##########  
             gc.collect()
             
-            
+            t5=time.time()
+ 
             # just get the textline result for each box of text regions
-            self.get_textlines_for_each_textregions(textline_mask_tot,boxes)
+            #self.get_textlines_for_each_textregions(textline_mask_tot)
             
             ##########  
-            gc.collect()
+
             
             # calculate the slope for deskewing for each box of text region.
-            self.get_slopes_for_each_text_region(contours)
+            self.get_slopes_for_each_text_region(contours,textline_mask_tot)
+            
             
             ##########  
             gc.collect()
+            
+            t6=time.time()
             
             # do deskewing for each box of text region.
-            self.deskew_textline_patches(contours, boxes)
+            self.deskew_textline_patches(contours,textline_mask_tot)
             
             ##########  
             gc.collect()
+            
+            t7=time.time()
+
         else:
             contours=[]
             order_of_texts=None
@@ -1929,7 +1962,16 @@ class textlineerkenner:
 
         # Destroy the current Keras session/graph to free memory
         K.clear_session()
+        
+        print( "time total = "+"{0:.2f}".format(time.time()-t1) )
+        print( "time needed for page extraction = "+"{0:.2f}".format(t2-t1) )
+        print( "time needed for text region extraction and get contours = "+"{0:.2f}".format(t3-t2) )
+        print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
+        print( "time needed to get order of regions = "+"{0:.2f}".format(t5-t4) )
+        print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t6-t5) )
+        print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
 
+        
 
 @click.command()
 @click.option('--image', '-i', help='image filename', type=click.Path(exists=True, dir_okay=False))
