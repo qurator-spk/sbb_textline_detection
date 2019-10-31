@@ -1550,6 +1550,7 @@ class textlineerkenner:
                                                                         np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             
             try:
+                denoised=None
                 textline_con=self.return_contours_of_image(crop_img)
                 textline_con_fil=self.filter_contours_area_of_image(crop_img,textline_con,denoised,max_area=1,min_area=0.0008)
                 y_diff_mean=self.find_contours_mean_y_diff(textline_con_fil)
