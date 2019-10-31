@@ -24,6 +24,7 @@ from scipy.ndimage import gaussian_filter1d
 import xml.etree.ElementTree as ET
 import warnings
 import click
+import time
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
