@@ -25,6 +25,7 @@ import xml.etree.ElementTree as ET
 import warnings
 import click
 import time
+from multiprocessing import Process, Queue, cpu_count
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -78,7 +79,7 @@ class textlineerkenner:
             polygon = geometry.Polygon([point[0] for point in c])
             area = polygon.area
             if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(
-                    image.shape[:2]):  # and hirarchy[0][jv][3]==-1 :
+                    image.shape[:2]) and hirarchy[0][jv][3] == -1 :  # and hirarchy[0][jv][3]==-1 :
                 found_polygons_early.append(
                     np.array([ [point] for point in polygon.exterior.coords], dtype=np.uint))
             jv += 1
@@ -114,156 +115,6 @@ class textlineerkenner:
         for j in range(n_classes):
             seg_f[:, :, j] = (seg == j).astype(int)
         return seg_f
-
-    def jaccard_distance_loss(self, y_true, y_pred, smooth=100):
-        """
-        Jaccard = (|X & Y|)/ (|X|+ |Y| - |X & Y|)
-                = sum(|A*B|)/(sum(|A|)+sum(|B|)-sum(|A*B|))
-        
-        The jaccard distance loss is usefull for unbalanced datasets. This has been
-        shifted so it converges on 0 and is smoothed to avoid exploding or disapearing
-        gradient.
-        
-        Ref: https://en.wikipedia.org/wiki/Jaccard_index
-        
-        @url: https://gist.github.com/wassname/f1452b748efcbeb4cb9b1d059dce6f96
-        @author: wassname
-        """
-        intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-        sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
-        jac = (intersection + smooth) / (sum_ - intersection + smooth)
-        return (1 - jac) * smooth
-
-    def soft_dice_loss(self, y_true, y_pred, epsilon=1e-6):
-        ''' 
-        Soft dice loss calculation for arbitrary batch size, number of classes, and number of spatial dimensions.
-        Assumes the `channels_last` format.
-      
-        # Arguments
-            y_true: b x X x Y( x Z...) x c One hot encoding of ground truth
-            y_pred: b x X x Y( x Z...) x c Network output, must sum to 1 over c channel (such as after softmax) 
-            epsilon: Used for numerical stability to avoid divide by zero errors
-        
-        # References
-            V-Net: Fully Convolutional Neural Networks for Volumetric Medical Image Segmentation 
-            https://arxiv.org/abs/1606.04797
-            More details on Dice loss formulation 
-            https://mediatum.ub.tum.de/doc/1395260/1395260.pdf (page 72)
-            
-            Adapted from https://github.com/Lasagne/Recipes/issues/99#issuecomment-347775022
-        '''
-
-        # skip the batch and class axis for calculating Dice score
-        axes = tuple(range(1, len(y_pred.shape) - 1))
-
-        numerator = 2. * K.sum(y_pred * y_true, axes)
-
-        denominator = K.sum(K.square(y_pred) + K.square(y_true), axes)
-        return 1.00 - K.mean(numerator / (denominator + epsilon))  # average over classes and batch
-
-    def weighted_categorical_crossentropy(self, weights=None):
-        """ weighted_categorical_crossentropy
-    
-            Args:
-                * weights<ktensor|nparray|list>: crossentropy weights
-            Returns:
-                * weighted categorical crossentropy function
-        """
-
-        def loss(y_true, y_pred):
-            labels_floats = tf.cast(y_true, tf.float32)
-            per_pixel_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels_floats, logits=y_pred)
-
-            if weights is not None:
-                weight_mask = tf.maximum(tf.reduce_max(tf.constant(
-                    np.array(weights, dtype=np.float32)[None, None, None])
-                                                       * labels_floats, axis=-1), 1.0)
-                per_pixel_loss = per_pixel_loss * weight_mask[:, :, :, None]
-            return tf.reduce_mean(per_pixel_loss)
-
-        return loss
-
-    def seg_metrics(self, y_true, y_pred, metric_name, metric_type='standard', drop_last=True, mean_per_class=False,
-                    verbose=False):
-        flag_soft = (metric_type == 'soft')
-        flag_naive_mean = (metric_type == 'naive')
-
-        # always assume one or more classes
-        num_classes = K.shape(y_true)[-1]
-
-        if not flag_soft:
-            # get one-hot encoded masks from y_pred (true masks should already be one-hot)
-            y_pred = K.one_hot(K.argmax(y_pred), num_classes)
-            y_true = K.one_hot(K.argmax(y_true), num_classes)
-
-        # if already one-hot, could have skipped above command
-        # keras uses float32 instead of float64, would give error down (but numpy arrays or keras.to_categorical gives float64)
-        y_true = K.cast(y_true, 'float32')
-        y_pred = K.cast(y_pred, 'float32')
-
-        # intersection and union shapes are batch_size * n_classes (values = area in pixels)
-        axes = (1, 2)  # W,H axes of each image
-        intersection = K.sum(K.abs(y_true * y_pred), axis=axes)
-        mask_sum = K.sum(K.abs(y_true), axis=axes) + K.sum(K.abs(y_pred), axis=axes)
-        union = mask_sum - intersection  # or, np.logical_or(y_pred, y_true) for one-hot
-
-        smooth = .001
-        iou = (intersection + smooth) / (union + smooth)
-        dice = 2 * (intersection + smooth) / (mask_sum + smooth)
-
-        metric = {'iou': iou, 'dice': dice}[metric_name]
-
-        # define mask to be 0 when no pixels are present in either y_true or y_pred, 1 otherwise
-        mask = K.cast(K.not_equal(union, 0), 'float32')
-
-        if drop_last:
-            metric = metric[:, :-1]
-            mask = mask[:, :-1]
-
-        if verbose:
-            print('intersection, union')
-            print(K.eval(intersection), K.eval(union))
-            print(K.eval(intersection / union))
-
-        # return mean metrics: remaining axes are (batch, classes)
-        if flag_naive_mean:
-            return K.mean(metric)
-
-        # take mean only over non-absent classes
-        class_count = K.sum(mask, axis=0)
-        non_zero = tf.greater(class_count, 0)
-        non_zero_sum = tf.boolean_mask(K.sum(metric * mask, axis=0), non_zero)
-        non_zero_count = tf.boolean_mask(class_count, non_zero)
-
-        if verbose:
-            print('Counts of inputs with class present, metrics for non-absent classes')
-            print(K.eval(class_count), K.eval(non_zero_sum / non_zero_count))
-
-        return K.mean(non_zero_sum / non_zero_count)
-
-    def mean_iou(self, y_true, y_pred, **kwargs):
-        return self.seg_metrics(y_true, y_pred, metric_name='iou', **kwargs)
-
-    def Mean_IOU(self, y_true, y_pred):
-        nb_classes = K.int_shape(y_pred)[-1]
-        iou = []
-        true_pixels = K.argmax(y_true, axis=-1)
-        pred_pixels = K.argmax(y_pred, axis=-1)
-        void_labels = K.equal(K.sum(y_true, axis=-1), 0)
-        for i in range(0, nb_classes):  # exclude first label (background) and last label (void)
-            true_labels = K.equal(true_pixels, i)  # & ~void_labels
-            pred_labels = K.equal(pred_pixels, i)  # & ~void_labels
-            inter = tf.to_int32(true_labels & pred_labels)
-            union = tf.to_int32(true_labels | pred_labels)
-            legal_batches = K.sum(tf.to_int32(true_labels), axis=1) > 0
-            ious = K.sum(inter, axis=1) / K.sum(union, axis=1)
-            iou.append(
-                K.mean(tf.gather(ious, indices=tf.where(legal_batches))))  # returns average IoU of the same objects
-        iou = tf.stack(iou)
-        legal_labels = ~tf.debugging.is_nan(iou)
-        iou = tf.gather(iou, indices=tf.where(legal_labels))
-        return K.mean(iou)
-
 
 
     def color_images(self, seg, n_classes):
@@ -342,7 +193,7 @@ class textlineerkenner:
         self.width_org = self.image.shape[1]
 
         if self.image.shape[0] < 1000:
-            self.img_hight_int = 1800
+            self.img_hight_int = 2800
             self.img_width_int = int(self.img_hight_int * self.image.shape[1] / float(self.image.shape[0]))
 
         elif self.image.shape[0] < 2000 and self.image.shape[0] >= 1000:
@@ -350,11 +201,11 @@ class textlineerkenner:
             self.img_width_int = int(self.img_hight_int * self.image.shape[1] / float(self.image.shape[0]))
 
         elif self.image.shape[0] < 3000 and self.image.shape[0] >= 2000:
-            self.img_hight_int = 4000
+            self.img_hight_int = 5500
             self.img_width_int = int(self.img_hight_int * self.image.shape[1] / float(self.image.shape[0]))
 
         elif self.image.shape[0] < 4000 and self.image.shape[0] >= 3000:
-            self.img_hight_int = 4500
+            self.img_hight_int = 6500
             self.img_width_int = int(self.img_hight_int * self.image.shape[1] / float(self.image.shape[0]))
 
         else:
@@ -371,39 +222,180 @@ class textlineerkenner:
         config.gpu_options.allow_growth = True
 
         session = tf.InteractiveSession()
-        model = load_model(model_dir, custom_objects={'mean_iou': self.mean_iou,
-                                                      'soft_dice_loss': self.soft_dice_loss,
-                                                      'jaccard_distance_loss': self.jaccard_distance_loss,
-                                                      'Mean_IOU': self.Mean_IOU})
+        model = load_model(model_dir, compile=False)
 
         return model, session
+    
+    def do_prediction(self,patches,img,model):
+        
+        img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
+        img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
+        n_classes = model.layers[len(model.layers) - 1].output_shape[3]
+
+        if patches:
+
+            margin = int(0.1 * img_width_model)
+
+            width_mid = img_width_model - 2 * margin
+            height_mid = img_height_model - 2 * margin
+
+
+            img = img / float(255.0)
+
+            img_h = img.shape[0]
+            img_w = img.shape[1]
+
+            prediction_true = np.zeros((img_h, img_w, 3))
+            mask_true = np.zeros((img_h, img_w))
+            nxf = img_w / float(width_mid)
+            nyf = img_h / float(height_mid)
+
+            if nxf > int(nxf):
+                nxf = int(nxf) + 1
+            else:
+                nxf = int(nxf)
+
+            if nyf > int(nyf):
+                nyf = int(nyf) + 1
+            else:
+                nyf = int(nyf)
+
+            for i in range(nxf):
+                for j in range(nyf):
+
+                    if i == 0:
+                        index_x_d = i * width_mid
+                        index_x_u = index_x_d + img_width_model
+                    elif i > 0:
+                        index_x_d = i * width_mid
+                        index_x_u = index_x_d + img_width_model
+
+                    if j == 0:
+                        index_y_d = j * height_mid
+                        index_y_u = index_y_d + img_height_model
+                    elif j > 0:
+                        index_y_d = j * height_mid
+                        index_y_u = index_y_d + img_height_model
+
+                    if index_x_u > img_w:
+                        index_x_u = img_w
+                        index_x_d = img_w - img_width_model
+                    if index_y_u > img_h:
+                        index_y_u = img_h
+                        index_y_d = img_h - img_height_model
+                        
+                    
+
+                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+
+                    label_p_pred = model.predict(
+                        img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
+
+                    seg = np.argmax(label_p_pred, axis=3)[0]
+
+                    seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+
+                    if i==0 and j==0:
+                        seg_color = seg_color[0:seg_color.shape[0] - margin, 0:seg_color.shape[1] - margin, :]
+                        seg = seg[0:seg.shape[0] - margin, 0:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + 0:index_y_u - margin, index_x_d + 0:index_x_u - margin] = seg
+                        prediction_true[index_y_d + 0:index_y_u - margin, index_x_d + 0:index_x_u - margin,
+                        :] = seg_color
+                        
+                    elif i==nxf-1 and j==nyf-1:
+                        seg_color = seg_color[margin:seg_color.shape[0] - 0, margin:seg_color.shape[1] - 0, :]
+                        seg = seg[margin:seg.shape[0] - 0, margin:seg.shape[1] - 0]
+
+                        mask_true[index_y_d + margin:index_y_u - 0, index_x_d + margin:index_x_u - 0] = seg
+                        prediction_true[index_y_d + margin:index_y_u - 0, index_x_d + margin:index_x_u - 0,
+                        :] = seg_color
+                        
+                    elif i==0 and j==nyf-1:
+                        seg_color = seg_color[margin:seg_color.shape[0] - 0, 0:seg_color.shape[1] - margin, :]
+                        seg = seg[margin:seg.shape[0] - 0, 0:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + margin:index_y_u - 0, index_x_d + 0:index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin:index_y_u - 0, index_x_d + 0:index_x_u - margin,
+                        :] = seg_color
+                        
+                    elif i==nxf-1 and j==0:
+                        seg_color = seg_color[0:seg_color.shape[0] - margin, margin:seg_color.shape[1] - 0, :]
+                        seg = seg[0:seg.shape[0] - margin, margin:seg.shape[1] - 0]
+
+                        mask_true[index_y_d + 0:index_y_u - margin, index_x_d + margin:index_x_u - 0] = seg
+                        prediction_true[index_y_d + 0:index_y_u - margin, index_x_d + margin:index_x_u - 0,
+                        :] = seg_color
+                        
+                    elif i==0 and j!=0 and j!=nyf-1:
+                        seg_color = seg_color[margin:seg_color.shape[0] - margin, 0:seg_color.shape[1] - margin, :]
+                        seg = seg[margin:seg.shape[0] - margin, 0:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + margin:index_y_u - margin, index_x_d + 0:index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin:index_y_u - margin, index_x_d + 0:index_x_u - margin,
+                        :] = seg_color
+                        
+                    elif i==nxf-1 and j!=0 and j!=nyf-1:
+                        seg_color = seg_color[margin:seg_color.shape[0] - margin, margin:seg_color.shape[1] - 0, :]
+                        seg = seg[margin:seg.shape[0] - margin, margin:seg.shape[1] - 0]
+
+                        mask_true[index_y_d + margin:index_y_u - margin, index_x_d + margin:index_x_u - 0] = seg
+                        prediction_true[index_y_d + margin:index_y_u - margin, index_x_d + margin:index_x_u - 0,
+                        :] = seg_color
+                        
+                    elif i!=0 and i!=nxf-1 and j==0:
+                        seg_color = seg_color[0:seg_color.shape[0] - margin, margin:seg_color.shape[1] - margin, :]
+                        seg = seg[0:seg.shape[0] - margin, margin:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + 0:index_y_u - margin, index_x_d + margin:index_x_u - margin] = seg
+                        prediction_true[index_y_d + 0:index_y_u - margin, index_x_d + margin:index_x_u - margin,
+                        :] = seg_color
+                        
+                    elif i!=0 and i!=nxf-1 and j==nyf-1:
+                        seg_color = seg_color[margin:seg_color.shape[0] - 0, margin:seg_color.shape[1] - margin, :]
+                        seg = seg[margin:seg.shape[0] - 0, margin:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + margin:index_y_u - 0, index_x_d + margin:index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin:index_y_u - 0, index_x_d + margin:index_x_u - margin,
+                        :] = seg_color
+
+                    else:
+                        seg_color = seg_color[margin:seg_color.shape[0] - margin, margin:seg_color.shape[1] - margin, :]
+                        seg = seg[margin:seg.shape[0] - margin, margin:seg.shape[1] - margin]
+
+                        mask_true[index_y_d + margin:index_y_u - margin, index_x_d + margin:index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin:index_y_u - margin, index_x_d + margin:index_x_u - margin,
+                        :] = seg_color
+
+            prediction_true = prediction_true.astype(np.uint8)
+                
+        if not patches:
+
+            img = img /float( 255.0)
+            img = self.resize_image(img, img_height_model, img_width_model)
+
+            label_p_pred = model.predict(
+                img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
+
+            seg = np.argmax(label_p_pred, axis=3)[0]
+            seg_color =np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+            prediction_true = self.resize_image(seg_color, self.image.shape[0], self.image.shape[1])
+            prediction_true = prediction_true.astype(np.uint8)
+        return prediction_true
+            
+        
 
     def extract_page(self):
+        patches=False
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-
-        img_height_page = model_page.layers[len(model_page.layers) - 1].output_shape[1]
-        img_width_page = model_page.layers[len(model_page.layers) - 1].output_shape[2]
-        n_classes_page = model_page.layers[len(model_page.layers) - 1].output_shape[3]
-
         img = self.otsu_copy(self.image)
-
         for ii in range(1):
             img = cv2.GaussianBlur(img, (15, 15), 0)
 
-
-        img = img /float( 255.0)
-        img = self.resize_image(img, img_height_page, img_width_page)
-
-        label_p_pred = model_page.predict(
-            img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
-
-        seg = np.argmax(label_p_pred, axis=3)[0]
-        seg_color = self.color_images(seg, n_classes_page)
-        imgs = self.resize_image(seg_color, self.image.shape[0], self.image.shape[1])
-
-
-        imgs = imgs.astype(np.uint8)
-        imgray = cv2.cvtColor(imgs, cv2.COLOR_BGR2GRAY)
+        
+        img_page_prediction=self.do_prediction(patches,img,model_page)
+        
+        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
         thresh = cv2.dilate(thresh, self.kernel, iterations=3)
@@ -429,189 +421,38 @@ class textlineerkenner:
         del model_page
         del session_page
         del self.image
-        del seg
         del contours
         del thresh
-        del imgs
         del img
 
         gc.collect()
         return croped_page, page_coord
 
     def extract_text_regions(self, img):
+        
+        patches=True
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir)
-
-        img_height_region = model_region.layers[len(model_region.layers) - 1].output_shape[1]
-        img_width_region = model_region.layers[len(model_region.layers) - 1].output_shape[2]
-        n_classes = model_region.layers[len(model_region.layers) - 1].output_shape[3]
-        margin = True
-        if margin:
-
-            width = img_width_region
-            height = img_height_region
-
-            # offset=int(.1*width)
-            offset = int(0.1 * width)
-
-            width_mid = width - 2 * offset
-            height_mid = height - 2 * offset
-
-            img = self.otsu_copy(img)
-            img = img.astype(np.uint8)
-            ##img = cv2.medianBlur(img,5)
-
-            # img = cv2.medianBlur(img,5)
-
-            # img=cv2.bilateralFilter(img,9,75,75)
-            # img=cv2.bilateralFilter(img,9,75,75)
-
-            img = img / float(255.0)
-
-            img_h = img.shape[0]
-            img_w = img.shape[1]
-
-            prediction_true = np.zeros((img_h, img_w, 3))
-            mask_true = np.zeros((img_h, img_w))
-            nxf = img_w / float(width_mid)
-            nyf = img_h / float(height_mid)
-
-            if nxf > int(nxf):
-                nxf = int(nxf) + 1
-            else:
-                nxf = int(nxf)
-
-            if nyf > int(nyf):
-                nyf = int(nyf) + 1
-            else:
-                nyf = int(nyf)
-
-            for i in range(nxf):
-                for j in range(nyf):
-
-                    if i == 0:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + width  # (i+1)*width
-                    elif i > 0:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + width  # (i+1)*width
-
-                    if j == 0:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + height  # (j+1)*height
-                    elif j > 0:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + height  # (j+1)*height
-
-                    if index_x_u > img_w:
-                        index_x_u = img_w
-                        index_x_d = img_w - width
-                    if index_y_u > img_h:
-                        index_y_u = img_h
-                        index_y_d = img_h - height
-                        
-                    
-
-                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-
-                    label_p_pred = model_region.predict(
-                        img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
-
-                    seg = np.argmax(label_p_pred, axis=3)[0]
-
-                    seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-
-                    if i==0 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[0:seg.shape[0] - offset, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[offset:seg.shape[0] - 0, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i==0 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - 0, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[0:seg.shape[0] - offset, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i==0 and j!=0 and j!=nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - offset, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j!=0 and j!=nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[offset:seg.shape[0] - offset, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i!=0 and i!=nxf-1 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[0:seg.shape[0] - offset, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i!=0 and i!=nxf-1 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - 0, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-
-                    else:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - offset, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-
-            prediction_true = prediction_true.astype(np.uint8)
-            session_region.close()
-
-            del model_region
-            del session_region
-            gc.collect()
-            return prediction_true
+        img = self.otsu_copy(img)
+        img = img.astype(np.uint8)
+        
+        prediction_regions=self.do_prediction(patches,img,model_region)
+        
+        session_region.close()
+        del model_region
+        del session_region
+        gc.collect()
+        return prediction_regions
 
     def get_text_region_contours_and_boxes(self, image):
-        rgb_class = (1, 1, 1)
-        mask = np.all(image == rgb_class, axis=-1)
+        rgb_class_of_texts = (1, 1, 1)
+        mask_texts = np.all(image == rgb_class_of_texts, axis=-1)
 
-        image = np.repeat(mask[:, :, np.newaxis], 3, axis=2) * 255
+        image = np.repeat(mask_texts[:, :, np.newaxis], 3, axis=2) * 255
         image = image.astype(np.uint8)
 
         image = cv2.morphologyEx(image, cv2.MORPH_OPEN, self.kernel)
         image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, self.kernel)
-        #image = cv2.erode(image,self.kernel,iterations = 2)
 
-        # image = cv2.dilate(image,self.kernel,iterations = 3)
 
         imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -619,34 +460,15 @@ class textlineerkenner:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-
-
-        # commenst_contours=self.filter_contours_area_of_image(thresh,contours,hirarchy,max_area=0.0002,min_area=0.0001)
         main_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
-
-        img_comm = np.zeros(thresh.shape)
-        img_comm_in = cv2.fillPoly(img_comm, pts=main_contours, color=(255, 255, 255))
-
-        img_comm_in = np.repeat(img_comm_in[:, :, np.newaxis], 3, axis=2)
-
-        img_comm_in = img_comm_in.astype(np.uint8)
-        # img_comm_in_de=self.deskew_images(img_comm_in)
-
-        imgray = cv2.cvtColor(img_comm_in, cv2.COLOR_BGR2GRAY)
-
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-        contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
         self.boxes = []
-        contours_new = []
-        for jj in range(len(contours)):
-            if hirarchy[0][jj][2] == -1:
-                x, y, w, h = cv2.boundingRect(contours[jj])
-                self.boxes.append([x, y, w, h])
-                contours_new.append(contours[jj])
+        
+        for jj in range(len(main_contours)):
+            x, y, w, h = cv2.boundingRect(main_contours[jj])
+            self.boxes.append([x, y, w, h])
+            
 
-        return contours_new
+        return main_contours
 
     def get_all_image_patches_coordination(self, image_page):
         self.all_box_coord=[]
@@ -656,226 +478,19 @@ class textlineerkenner:
         
 
     def textline_contours(self, img):
+        patches=True
         model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
-        img_height_textline = model_textline.layers[len(model_textline.layers) - 1].output_shape[1]
-        img_width_textline = model_textline.layers[len(model_textline.layers) - 1].output_shape[2]
-        n_classes = model_textline.layers[len(model_textline.layers) - 1].output_shape[3]
+        img = self.otsu_copy(img)
+        img = img.astype(np.uint8)
+        
+        prediction_textline=self.do_prediction(patches,img,model_textline)
 
-        img_org = img.copy()
-
-        if img.shape[0] < img_height_textline:
-            img = cv2.resize(img, (img.shape[1], img_width_textline), interpolation=cv2.INTER_NEAREST)
-
-        if img.shape[1] < img_width_textline:
-            img = cv2.resize(img, (img_height_textline, img.shape[0]), interpolation=cv2.INTER_NEAREST)
-
-        margin = True
-        if not margin:
-
-            width = img_width_textline
-            height = img_height_textline
-
-            img = self.otsu_copy(img)
-            img = img.astype(np.uint8)
-            # for _ in range(4):
-            #img = cv2.medianBlur(img,5)
-            img = img / float(255.0)
-
-            img_h = img.shape[0]
-            img_w = img.shape[1]
-
-            prediction_true = np.zeros((img_h, img_w, 3))
-            mask_true = np.zeros((img_h, img_w))
-            nxf = img_w / float(width)
-            nyf = img_h / float(height)
-
-            if nxf > int(nxf):
-                nxf = int(nxf) + 1
-            else:
-                nxf = int(nxf)
-
-            if nyf > int(nyf):
-                nyf = int(nyf) + 1
-            else:
-                nyf = int(nyf)
-
-            for i in range(nxf):
-                for j in range(nyf):
-                    index_x_d = i * width
-                    index_x_u = (i + 1) * width
-
-                    index_y_d = j * height
-                    index_y_u = (j + 1) * height
-
-                    if index_x_u > img_w:
-                        index_x_u = img_w
-                        index_x_d = img_w - width
-                    if index_y_u > img_h:
-                        index_y_u = img_h
-                        index_y_d = img_h - height
-
-                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-
-                    label_p_pred = model_textline.predict(
-                        img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
-                    seg = np.argmax(label_p_pred, axis=3)[0]
-                    seg_color = self.color_images(seg, n_classes)
-                    mask_true[index_y_d:index_y_u, index_x_d:index_x_u] = seg
-                    prediction_true[index_y_d:index_y_u, index_x_d:index_x_u, :] = seg_color
-
-            y_predi = mask_true
-            y_predi = cv2.resize(y_predi, (img_org.shape[1], img_org.shape[0]), interpolation=cv2.INTER_NEAREST)
-
-
-
-        if margin:
-
-            width = img_width_textline
-            height = img_height_textline
-
-            # offset=int(.1*width)
-            offset = int(0.1 * width)
-
-            width_mid = width - 2 * offset
-            height_mid = height - 2 * offset
-
-            img = self.otsu_copy(img)
-            img = img.astype(np.uint8)
-
-            img = img /float( 255.0)
-
-            img_h = img.shape[0]
-            img_w = img.shape[1]
-
-            prediction_true = np.zeros((img_h, img_w, 3))
-            mask_true = np.zeros((img_h, img_w))
-            nxf = img_w / float(width_mid)
-            nyf = img_h / float(height_mid)
-
-            if nxf > int(nxf):
-                nxf = int(nxf) + 1
-            else:
-                nxf = int(nxf)
-
-            if nyf > int(nyf):
-                nyf = int(nyf) + 1
-            else:
-                nyf = int(nyf)
-
-            for i in range(nxf):
-                for j in range(nyf):
-
-                    if i == 0:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + width  # (i+1)*width
-                    elif i > 0:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + width  # (i+1)*width
-
-                    if j == 0:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + height  # (j+1)*height
-                    elif j > 0:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + height  # (j+1)*height
-
-                    if index_x_u > img_w:
-                        index_x_u = img_w
-                        index_x_d = img_w - width
-                    if index_y_u > img_h:
-                        index_y_u = img_h
-                        index_y_d = img_h - height
-                        
-                    
-
-                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-
-                    label_p_pred = model_textline.predict(
-                        img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
-
-                    seg = np.argmax(label_p_pred, axis=3)[0]
-
-                    seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-
-                    if i==0 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[0:seg.shape[0] - offset, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[offset:seg.shape[0] - 0, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i==0 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - 0, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[0:seg.shape[0] - offset, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i==0 and j!=0 and j!=nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, 0:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - offset, 0:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + 0:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + 0:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i==nxf-1 and j!=0 and j!=nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, offset:seg_color.shape[1] - 0, :]
-                        seg = seg[offset:seg.shape[0] - offset, offset:seg.shape[1] - 0]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - 0] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - 0,
-                        :] = seg_color
-                        
-                    elif i!=0 and i!=nxf-1 and j==0:
-                        seg_color = seg_color[0:seg_color.shape[0] - offset, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[0:seg.shape[0] - offset, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + 0:index_y_u - offset, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-                        
-                    elif i!=0 and i!=nxf-1 and j==nyf-1:
-                        seg_color = seg_color[offset:seg_color.shape[0] - 0, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - 0, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - 0, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-
-                    else:
-                        seg_color = seg_color[offset:seg_color.shape[0] - offset, offset:seg_color.shape[1] - offset, :]
-                        seg = seg[offset:seg.shape[0] - offset, offset:seg.shape[1] - offset]
-
-                        mask_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - offset] = seg
-                        prediction_true[index_y_d + offset:index_y_u - offset, index_x_d + offset:index_x_u - offset,
-                        :] = seg_color
-
-            y_predi = mask_true.astype(np.uint8)
         session_textline.close()
 
         del model_textline
         del session_textline
         gc.collect()
-        return y_predi
+        return prediction_textline[:,:,0]
 
     def get_textlines_for_each_textregions(self, textline_mask_tot, boxes):
         textline_mask_tot = cv2.erode(textline_mask_tot, self.kernel, iterations=1)
@@ -1180,7 +795,7 @@ class textlineerkenner:
 
         return peaks, textline_boxes_rot
     
-    def ruturn_rotated_contours(self,slope,img_patch):
+    def return_rotated_contours(self,slope,img_patch):
             dst = self.rotate_image(img_patch, slope)
             dst = dst.astype(np.uint8)
             dst = dst[:, :, 0]
@@ -1188,7 +803,6 @@ class textlineerkenner:
             
             imgray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
-
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
             contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -1198,14 +812,12 @@ class textlineerkenner:
         
 
         textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
-
         textline_mask = textline_mask.astype(np.uint8)
         kernel = np.ones((5, 5), np.uint8)
         textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_OPEN, kernel)
         textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, kernel)
-        textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
+        textline_mask = cv2.erode(textline_mask, kernel, iterations=2)
         
-
         try:
 
             dst = self.rotate_image(textline_mask, slope)
@@ -1310,7 +922,7 @@ class textlineerkenner:
         imgray = cv2.cvtColor(image_box_tabels, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
         contours,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        return contours
+        return contours,hierachy
     
     def find_contours_mean_y_diff(self,contours_main):
         M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -1441,22 +1053,22 @@ class textlineerkenner:
 
         return ang_int
 
-    def get_slopes_for_each_text_region(self, contours,textline_mask_tot):
-
-        slope_biggest=0#self.return_deskew_slop(img_int_p,sigma_des)
-
-        self.slopes = []
-        for mv in range(len(self.boxes)):
+        
+    def do_work_of_slopes(self,q,poly,box_sub,boxes_per_process,textline_mask_tot,contours_per_process):
+        slope_biggest=0
+        slopes_sub = []
+        boxes_sub_new=[]
+        poly_sub=[]
+        for mv in range(len(boxes_per_process)):
             
             
-            crop_img, _ = self.crop_image_inside_box(self.boxes[mv],
+            crop_img, _ = self.crop_image_inside_box(boxes_per_process[mv],
                                                                         np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             crop_img=crop_img[:,:,0]
-            crop_img=cv2.erode(crop_img,self.kernel,iterations = 1)
+            crop_img=cv2.erode(crop_img,self.kernel,iterations = 2)
             
             try:
-                hierachy=None
-                textline_con=self.return_contours_of_image(crop_img)
+                textline_con,hierachy=self.return_contours_of_image(crop_img)
                 textline_con_fil=self.filter_contours_area_of_image(crop_img,textline_con,hierachy,max_area=1,min_area=0.0008)
                 y_diff_mean=self.find_contours_mean_y_diff(textline_con_fil)
 
@@ -1477,9 +1089,59 @@ class textlineerkenner:
                 slope_corresponding_textregion=slope_biggest
             elif slope_corresponding_textregion==999:
                 slope_corresponding_textregion=slope_biggest
-            self.slopes.append(slope_corresponding_textregion)
-                
+            slopes_sub.append(slope_corresponding_textregion)
+            
+            cnt_clean_rot = self.textline_contours_postprocessing(crop_img
+                                                                                        , slope_corresponding_textregion,
+                                                                                        contours_per_process[mv], boxes_per_process[mv])
+            
+            poly_sub.append(cnt_clean_rot)
+            boxes_sub_new.append(boxes_per_process[mv] )
+            
 
+        q.put(slopes_sub)
+        poly.put(poly_sub)
+        box_sub.put(boxes_sub_new )
+
+    def get_slopes_and_deskew(self, contours,textline_mask_tot):
+
+        slope_biggest=0#self.return_deskew_slop(img_int_p,sigma_des)
+        
+        num_cores = cpu_count()
+        q = Queue()
+        poly=Queue()
+        box_sub=Queue()
+        
+        processes = []
+        nh=np.linspace(0, len(self.boxes), num_cores+1)
+        
+        
+        for i in range(num_cores):
+            boxes_per_process=self.boxes[int(nh[i]):int(nh[i+1])]
+            contours_per_process=contours[int(nh[i]):int(nh[i+1])]
+            processes.append(Process(target=self.do_work_of_slopes, args=(q,poly,box_sub,  boxes_per_process, textline_mask_tot, contours_per_process)))
+        
+        for i in range(num_cores):
+            processes[i].start()
+            
+        self.slopes = []
+        self.all_found_texline_polygons=[]
+        self.boxes=[]
+        
+        for i in range(num_cores):
+            slopes_for_sub_process=q.get(True)
+            boxes_for_sub_process=box_sub.get(True)
+            polys_for_sub_process=poly.get(True)
+            
+            for j in range(len(slopes_for_sub_process)):
+                self.slopes.append(slopes_for_sub_process[j])
+                self.all_found_texline_polygons.append(polys_for_sub_process[j])
+                self.boxes.append(boxes_for_sub_process[j])
+                
+        for i in range(num_cores):
+            processes[i].join()
+            
+        
     def order_of_regions(self, textline_mask,contours_main):
         mada_n=textline_mask.sum(axis=1)
         y=mada_n[:]
@@ -1542,23 +1204,15 @@ class textlineerkenner:
         matrix_of_orders[len_main:,1]=2
         
         matrix_of_orders[:len_main,2]=cx_main
-
-        
         matrix_of_orders[:len_main,3]=cy_main
 
-        
-        
         matrix_of_orders[:len_main,4]=np.array( range( len_main ) )
 
-        
         peaks_neg_new=[]
-        
         peaks_neg_new.append(0)
         for iii in range(len(peaks_neg)):
             peaks_neg_new.append(peaks_neg[iii])
-            
         peaks_neg_new.append(textline_mask.shape[0])
-        
         
         final_indexers_sorted=[]
         for i in range(len(peaks_neg_new)-1):
@@ -1575,8 +1229,6 @@ class textlineerkenner:
             for j in range(len(ind_in_int)):
                 final_indexers_sorted.append(int(ind_in_int[j]) )
         
-        
-                
         return final_indexers_sorted, matrix_of_orders
 
             
@@ -1595,22 +1247,6 @@ class textlineerkenner:
             
         order_of_texts
         return order_of_texts, id_of_texts
-    def deskew_textline_patches(self, contours,textline_mask_tot):
-        self.all_text_region_processed = []
-        self.all_found_texline_polygons = []
-        
-
-        for jj in range(len(self.boxes)):
-            
-            crop_img, _ = self.crop_image_inside_box(self.boxes[jj],
-                                                                        np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
-            
-            cnt_clean_rot = self.textline_contours_postprocessing(crop_img[:,:,0]
-                                                                                        , self.slopes[jj],
-                                                                                        contours[jj], self.boxes[jj])
-
-
-            self.all_found_texline_polygons.append(cnt_clean_rot)
     
     def write_into_page_xml(self,contours,page_coord,dir_of_image,order_of_texts , id_of_texts):
 
@@ -1791,6 +1427,7 @@ class textlineerkenner:
         
         # extract text regions and corresponding contours and surrounding box
         text_regions=self.extract_text_regions(image_page)
+
         contours=self.get_text_region_contours_and_boxes(text_regions)
         
 
@@ -1804,13 +1441,11 @@ class textlineerkenner:
         
         if len(contours)>0:
             
-            self.get_all_image_patches_coordination(image_page)
-            
-            ##########  
-            gc.collect()
+
             
             # extracting textlines using segmentation
             textline_mask_tot=self.textline_contours(image_page)
+            #print(textline_mask_tot)
             #plt.imshow(textline_mask_tot)
             #plt.show()
             ##########  
@@ -1835,17 +1470,21 @@ class textlineerkenner:
 
             
             # calculate the slope for deskewing for each box of text region.
-            self.get_slopes_for_each_text_region(contours,textline_mask_tot)
+            self.get_slopes_and_deskew(contours,textline_mask_tot)
             
             
             ##########  
             gc.collect()
             
+    
             t6=time.time()
             
             # do deskewing for each box of text region.
-            self.deskew_textline_patches(contours,textline_mask_tot)
+            ###self.deskew_textline_patches(contours,textline_mask_tot)
             
+            self.get_all_image_patches_coordination(image_page)
+            
+            ########## 
             ##########  
             gc.collect()
             
