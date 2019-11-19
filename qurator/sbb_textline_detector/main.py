@@ -26,6 +26,8 @@ import warnings
 import click
 import time
 from multiprocessing import Process, Queue, cpu_count
+import datetime
+
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -1269,11 +1271,9 @@ class textlineerkenner:
 
 
         created=ET.SubElement(metadata, 'Created')
-        created.text = '2019-06-17T18:15:12'
-
+        created.text = datetime.datetime.now().isoformat()
         changetime=ET.SubElement(metadata, 'LastChange')
-        changetime.text = '2019-06-17T18:15:12' 
-
+        changetime.text = datetime.datetime.now().isoformat()
 
 
         page=ET.SubElement(data,'Page')
