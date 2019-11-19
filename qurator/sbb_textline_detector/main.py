@@ -1364,12 +1364,6 @@ class textlineerkenner:
                     
     
                     coord = ET.SubElement(textline, 'Coords')
-    
-                    texteq=ET.SubElement(textline, 'TextEquiv')
-    
-                    uni=ET.SubElement(texteq, 'Unicode')
-                    uni.text = ' ' 
-    
                     #points = ET.SubElement(coord, 'Points') 
     
                     points_co=''
