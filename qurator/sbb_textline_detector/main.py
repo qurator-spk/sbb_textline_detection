@@ -1391,15 +1391,8 @@ class textlineerkenner:
                             points_co=points_co+' '
                     #print(points_co)
                     coord.set('points',points_co)
-                    
-                texteqreg=ET.SubElement(textregion, 'TextEquiv')
-    
-                unireg=ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' ' 
 
 
-
-            
 
         tree = ET.ElementTree(data)
         tree.write(os.path.join(self.dir_out, self.f_name) + ".xml")
