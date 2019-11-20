@@ -1056,14 +1056,15 @@ class textlineerkenner:
         return ang_int
 
         
-    def do_work_of_slopes(self,q,poly,box_sub,boxes_per_process,textline_mask_tot,contours_per_process):
+    def do_work_of_slopes(self,q,poly,box_sub,boxes_per_process,contours_sub,textline_mask_tot,contours_per_process):
         slope_biggest=0
         slopes_sub = []
         boxes_sub_new=[]
         poly_sub=[]
+        contours_sub_per_p=[]
         for mv in range(len(boxes_per_process)):
             
-            
+            contours_sub_per_p.append(contours_per_process[mv])
             crop_img, _ = self.crop_image_inside_box(boxes_per_process[mv],
                                                                         np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             crop_img=crop_img[:,:,0]
@@ -1099,20 +1100,23 @@ class textlineerkenner:
             
             poly_sub.append(cnt_clean_rot)
             boxes_sub_new.append(boxes_per_process[mv] )
+
             
 
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new )
+        contours_sub.put(contours_sub_per_p)
 
     def get_slopes_and_deskew(self, contours,textline_mask_tot):
 
         slope_biggest=0#self.return_deskew_slop(img_int_p,sigma_des)
         
-        num_cores = 1  # XXX cpu_count()
+        num_cores = cpu_count()
         q = Queue()
         poly=Queue()
         box_sub=Queue()
+        contours_sub=Queue()
         
         processes = []
         nh=np.linspace(0, len(self.boxes), num_cores+1)
@@ -1121,27 +1125,32 @@ class textlineerkenner:
         for i in range(num_cores):
             boxes_per_process=self.boxes[int(nh[i]):int(nh[i+1])]
             contours_per_process=contours[int(nh[i]):int(nh[i+1])]
-            processes.append(Process(target=self.do_work_of_slopes, args=(q,poly,box_sub,  boxes_per_process, textline_mask_tot, contours_per_process)))
+            processes.append(Process(target=self.do_work_of_slopes, args=(q,poly,box_sub,  boxes_per_process, contours_sub, textline_mask_tot, contours_per_process)))
         
         for i in range(num_cores):
             processes[i].start()
             
         self.slopes = []
         self.all_found_texline_polygons=[]
+        all_found_text_regions=[]
         self.boxes=[]
         
         for i in range(num_cores):
             slopes_for_sub_process=q.get(True)
             boxes_for_sub_process=box_sub.get(True)
             polys_for_sub_process=poly.get(True)
+            contours_for_subprocess=contours_sub.get(True)
             
             for j in range(len(slopes_for_sub_process)):
                 self.slopes.append(slopes_for_sub_process[j])
                 self.all_found_texline_polygons.append(polys_for_sub_process[j])
                 self.boxes.append(boxes_for_sub_process[j])
+                all_found_text_regions.append(contours_for_subprocess[j])
                 
         for i in range(num_cores):
             processes[i].join()
+            
+        return all_found_text_regions
             
         
     def order_of_regions(self, textline_mask,contours_main):
@@ -1441,33 +1450,23 @@ class textlineerkenner:
             
             t4=time.time()
             
+            
+            # calculate the slope for deskewing for each box of text region.
+            contours=self.get_slopes_and_deskew(contours,textline_mask_tot)
+            
+            gc.collect()
+            t5=time.time()
+            
+            
             # get orders of each textregion. This method by now only works for one column documents. 
             indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
             order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
             
-            ##########  
-            gc.collect()
-            
-            t5=time.time()
- 
-            # just get the textline result for each box of text regions
-            #self.get_textlines_for_each_textregions(textline_mask_tot)
-            
-            ##########  
-
-            
-            # calculate the slope for deskewing for each box of text region.
-            self.get_slopes_and_deskew(contours,textline_mask_tot)
-            
             
             ##########  
             gc.collect()
-            
-    
             t6=time.time()
             
-            # do deskewing for each box of text region.
-            ###self.deskew_textline_patches(contours,textline_mask_tot)
             
             self.get_all_image_patches_coordination(image_page)
             
@@ -1490,8 +1489,8 @@ class textlineerkenner:
         print( "time needed for page extraction = "+"{0:.2f}".format(t2-t1) )
         print( "time needed for text region extraction and get contours = "+"{0:.2f}".format(t3-t2) )
         print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
-        print( "time needed to get order of regions = "+"{0:.2f}".format(t5-t4) )
-        print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t6-t5) )
+        print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t5-t4) )
+        print( "time needed to get order of regions = "+"{0:.2f}".format(t6-t5) )
         print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
 
 
