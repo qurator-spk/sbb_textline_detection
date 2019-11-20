@@ -1109,7 +1109,7 @@ class textlineerkenner:
 
         slope_biggest=0#self.return_deskew_slop(img_int_p,sigma_des)
         
-        num_cores = cpu_count()
+        num_cores = 1  # XXX cpu_count()
         q = Queue()
         poly=Queue()
         box_sub=Queue()
