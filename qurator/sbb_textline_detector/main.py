@@ -1460,10 +1460,11 @@ class textlineerkenner:
         print( "time total = "+"{0:.2f}".format(time.time()-t1) )
         print( "time needed for page extraction = "+"{0:.2f}".format(t2-t1) )
         print( "time needed for text region extraction and get contours = "+"{0:.2f}".format(t3-t2) )
-        print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
-        print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t5-t4) )
-        print( "time needed to get order of regions = "+"{0:.2f}".format(t6-t5) )
-        print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
+        if len(contours)>0:
+            print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
+            print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t5-t4) )
+            print( "time needed to get order of regions = "+"{0:.2f}".format(t6-t5) )
+            print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
 
         
 
