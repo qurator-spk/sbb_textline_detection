@@ -55,7 +55,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             input_file = self.workspace.mets.find_files(fileGrp=self.input_file_grp, pageId=page_id)[0]
             log.info("INPUT FILE %i / %s", n, input_file)
 
-            file_id = self._make_file_id(input_file, self.output_file_grp, n)
+            file_id = self._make_file_id(input_file, self.input_file_grp, n)
 
             # Process the files
             try:
