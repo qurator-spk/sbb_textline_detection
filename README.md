@@ -15,7 +15,7 @@ sudo pip install .
 
 # Usage
 
-sbb_textline_detector -i 'image file name here' -o 'directory to write output xml here' -m 'here should be directory of models'
+sbb_textline_detector -i 'image file name' -o 'directory to write output xml' -m 'directory of models'
 
 
 
