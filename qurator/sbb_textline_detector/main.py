@@ -34,7 +34,7 @@ with warnings.catch_warnings():
 
 __doc__ = \
     """
-    tool to extract table form data from alto xml data
+    tool to extract text lines from document images
     """
 
 
