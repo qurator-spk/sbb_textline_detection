@@ -1,37 +1,12 @@
 # Textline-Recognition
 
 ***
+# Tool:
+This tool does textline detection of image and throw result as xml data.
 
-# Installation:
+# Models:
+In order to run this tool you need corresponding models. You can find them here
+https://file.spk-berlin.de:8443/textline_detection/
 
-Setup virtual environment:
-```
-virtualenv --python=python3.6 venv
-```
-
-Activate virtual environment:
-```
-source venv/bin/activate
-```
-
-Upgrade pip:
-```
-pip install -U pip
-```
-
-Install package together with its dependencies in development mode:
-```
-pip install -e ./
-```
-
-***
-
-Perform document structure and textline analysis on a
-scanned document image and save the result as PAGE XML.
-
-### Usage
-```
-text_line_recognition --help
-```
 
 
