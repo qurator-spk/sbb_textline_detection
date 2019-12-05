@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "tools": {
+    "ocrd_sbb_textline_detector": {
+      "executable": "ocrd_sbb_textline_detector",
+      "description": "Detect lines",
+      "steps": ["layout/segmentation/line"],
+      "input_file_grp": [
+        "OCR-D-IMG"
+      ],
+      "output_file_grp": [
+        "OCR-D-SBB-SEG-LINE"
+      ],
+      "parameters": {
+        "model": {"type": "string", "format": "file", "cacheable": true}
+      }
+    }
+  }
+}
