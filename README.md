@@ -5,7 +5,7 @@ This tool performs textline detection from document image data and returns the r
 
 ## Installation
 
-`sudo pip install .`
+`pip install .`
 
 ## Models
 In order to run this tool you also need trained models. You can download our pre-trained models from here:   
