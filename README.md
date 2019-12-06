@@ -1,4 +1,4 @@
-# Textline-Recognition
+# Textline Detection
 
 ## Introduction
 This tool performs textline detection from document image data and returns the results as PAGE-XML.
@@ -19,7 +19,7 @@ https://file.spk-berlin.de:8443/textline_detection/
 
 ~~~
 ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
-ocrd_sbb_textline_detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
+ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
         -p '{ "model": "/path/to/the/models/textline_detection" }'
 ~~~
 
