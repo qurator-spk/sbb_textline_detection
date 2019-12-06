@@ -916,8 +916,8 @@ class textlineerkenner:
         image_box_tabels=image_box_tabels.astype(np.uint8)
         imgray = cv2.cvtColor(image_box_tabels, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-        contours,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        return contours,hierachy
+        contours,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        return contours,hierarchy
     
     def find_contours_mean_y_diff(self,contours_main):
         M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
