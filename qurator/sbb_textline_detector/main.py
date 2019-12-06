@@ -1236,9 +1236,9 @@ class textlineerkenner:
         # create the file structure
         data = ET.Element('PcGts')
 
-        data.set('xmlns',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        data.set('xmlns',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
         data.set('xmlns:xsi',"http://www.w3.org/2001/XMLSchema-instance")
-        data.set('xsi:schemaLocation',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        data.set('xsi:schemaLocation',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
 
 
 
