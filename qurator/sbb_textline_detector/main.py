@@ -1378,7 +1378,7 @@ class textlineerkenner:
     
     def run(self):
         
-        #get image and sclaes, then extract the page of scanned image
+        #get image and scales, then extract the page of scanned image
         t1=time.time()
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
