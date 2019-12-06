@@ -70,7 +70,7 @@ class textlineerkenner:
                     np.array([point for point in polygon.exterior.coords], dtype=np.uint))
         return found_polygons_early
 
-    def filter_contours_area_of_image(self, image, contours, hirarchy, max_area, min_area):
+    def filter_contours_area_of_image(self, image, contours, hierarchy, max_area, min_area):
         found_polygons_early = list()
 
         jv = 0
@@ -81,13 +81,13 @@ class textlineerkenner:
             polygon = geometry.Polygon([point[0] for point in c])
             area = polygon.area
             if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(
-                    image.shape[:2]) and hirarchy[0][jv][3] == -1 :  # and hirarchy[0][jv][3]==-1 :
+                    image.shape[:2]) and hierarchy[0][jv][3] == -1 :  # and hierarchy[0][jv][3]==-1 :
                 found_polygons_early.append(
                     np.array([ [point] for point in polygon.exterior.coords], dtype=np.uint))
             jv += 1
         return found_polygons_early
 
-    def filter_contours_area_of_image_interiors(self, image, contours, hirarchy, max_area, min_area):
+    def filter_contours_area_of_image_interiors(self, image, contours, hierarchy, max_area, min_area):
         found_polygons_early = list()
 
         jv = 0
@@ -98,7 +98,7 @@ class textlineerkenner:
             polygon = geometry.Polygon([point[0] for point in c])
             area = polygon.area
             if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and \
-                    hirarchy[0][jv][3] != -1:
+                    hierarchy[0][jv][3] != -1:
                 # print(c[0][0][1])
                 found_polygons_early.append(
                     np.array([point for point in polygon.exterior.coords], dtype=np.uint))
@@ -486,9 +486,9 @@ class textlineerkenner:
 
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-        contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-        main_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
+        main_contours = self.filter_contours_area_of_image(thresh, contours, hierarchy, max_area=1, min_area=0.00001)
         self.boxes = []
         
         for jj in range(len(main_contours)):
@@ -1378,7 +1378,7 @@ class textlineerkenner:
     
     def run(self):
         
-        #get image and sclaes, then extract the page of scanned image
+        #get image and scales, then extract the page of scanned image
         t1=time.time()
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
