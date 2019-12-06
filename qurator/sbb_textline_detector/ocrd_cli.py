@@ -12,7 +12,7 @@ from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, Label
 from ocrd_utils import concat_padded, getLogger, MIMETYPE_PAGE
 from pkg_resources import resource_string
 
-from qurator.sbb_textline_detector import textlineerkenner
+from qurator.sbb_textline_detector import textline_detector
 
 log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
 
@@ -67,7 +67,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                 # Segment the image
                 image_file = self._resolve_image_file(input_file)
                 model = self.parameter['model']
-                x = textlineerkenner(image_file, tmp_dirname, file_id, model)
+                x = textline_detector(image_file, tmp_dirname, file_id, model)
                 x.run()
 
                 # Read segmentation results
