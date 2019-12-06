@@ -21,7 +21,8 @@ sbb_textline_detector -i 'image file name' -o 'directory to write output xml' -m
 ## Usage with OCR-D
 ~~~
 ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
-ocrd_sbb_textline_detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB -p '{ "model": "/path/to/the/models/textline_detection" }'
+ocrd_sbb_textline_detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
+        -p '{ "model": "/path/to/the/models/textline_detection" }'
 ~~~
 
 Segmentation works on raw RGB images, but respects and retains
