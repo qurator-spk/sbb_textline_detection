@@ -1,5 +1,4 @@
-opencv-python
-numpy
+opencv-python-headless
 matplotlib
 seaborn
 tqdm
@@ -8,5 +7,4 @@ shapely
 scikit-learn
 tensorflow-gpu < 2.0
 scipy
-click
 ocrd >= 2.0.0
