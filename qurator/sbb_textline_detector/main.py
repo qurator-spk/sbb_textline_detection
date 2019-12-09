@@ -34,11 +34,11 @@ with warnings.catch_warnings():
 
 __doc__ = \
     """
-    tool to extract table form data from alto xml data
+    tool to extract text lines from document images
     """
 
 
-class textlineerkenner:
+class textline_detector:
     def __init__(self, image_dir, dir_out, f_name, dir_models):
         self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
@@ -70,7 +70,7 @@ class textlineerkenner:
                     np.array([point for point in polygon.exterior.coords], dtype=np.uint))
         return found_polygons_early
 
-    def filter_contours_area_of_image(self, image, contours, hirarchy, max_area, min_area):
+    def filter_contours_area_of_image(self, image, contours, hierarchy, max_area, min_area):
         found_polygons_early = list()
 
         jv = 0
@@ -81,13 +81,13 @@ class textlineerkenner:
             polygon = geometry.Polygon([point[0] for point in c])
             area = polygon.area
             if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(
-                    image.shape[:2]) and hirarchy[0][jv][3] == -1 :  # and hirarchy[0][jv][3]==-1 :
+                    image.shape[:2]) and hierarchy[0][jv][3] == -1 :  # and hierarchy[0][jv][3]==-1 :
                 found_polygons_early.append(
                     np.array([ [point] for point in polygon.exterior.coords], dtype=np.uint))
             jv += 1
         return found_polygons_early
 
-    def filter_contours_area_of_image_interiors(self, image, contours, hirarchy, max_area, min_area):
+    def filter_contours_area_of_image_interiors(self, image, contours, hierarchy, max_area, min_area):
         found_polygons_early = list()
 
         jv = 0
@@ -98,7 +98,7 @@ class textlineerkenner:
             polygon = geometry.Polygon([point[0] for point in c])
             area = polygon.area
             if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and \
-                    hirarchy[0][jv][3] != -1:
+                    hierarchy[0][jv][3] != -1:
                 # print(c[0][0][1])
                 found_polygons_early.append(
                     np.array([point for point in polygon.exterior.coords], dtype=np.uint))
@@ -486,9 +486,9 @@ class textlineerkenner:
 
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-        contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-        main_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
+        main_contours = self.filter_contours_area_of_image(thresh, contours, hierarchy, max_area=1, min_area=0.00001)
         self.boxes = []
         
         for jj in range(len(main_contours)):
@@ -916,8 +916,8 @@ class textlineerkenner:
         image_box_tabels=image_box_tabels.astype(np.uint8)
         imgray = cv2.cvtColor(image_box_tabels, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-        contours,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        return contours,hierachy
+        contours,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        return contours,hierarchy
     
     def find_contours_mean_y_diff(self,contours_main):
         M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -1236,9 +1236,9 @@ class textlineerkenner:
         # create the file structure
         data = ET.Element('PcGts')
 
-        data.set('xmlns',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        data.set('xmlns',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
         data.set('xmlns:xsi',"http://www.w3.org/2001/XMLSchema-instance")
-        data.set('xsi:schemaLocation',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+        data.set('xsi:schemaLocation',"http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
 
 
 
@@ -1378,7 +1378,7 @@ class textlineerkenner:
     
     def run(self):
         
-        #get image and sclaes, then extract the page of scanned image
+        #get image and scales, then extract the page of scanned image
         t1=time.time()
         self.get_image_and_scales()
         image_page,page_coord=self.extract_page()
@@ -1475,7 +1475,7 @@ class textlineerkenner:
 def main(image, out, model):
     possibles = globals()  # XXX unused?
     possibles.update(locals())
-    x = textlineerkenner(image, out, None, model)
+    x = textline_detector(image, out, None, model)
     x.run()
 
 

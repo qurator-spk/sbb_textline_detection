@@ -1,8 +1,8 @@
 {
   "version": "0.0.1",
   "tools": {
-    "ocrd_sbb_textline_detector": {
-      "executable": "ocrd_sbb_textline_detector",
+    "ocrd-sbb-textline-detector": {
+      "executable": "ocrd-sbb-textline-detector",
       "description": "Detect lines",
       "steps": ["layout/segmentation/line"],
       "input_file_grp": [
