@@ -25,7 +25,7 @@ def ocrd_sbb_textline_detector(*args, **kwargs):
     return ocrd_cli_wrap_processor(OcrdSbbTextlineDetectorRecognize, *args, **kwargs)
 
 
-TOOL = 'ocrd_sbb_textline_detector'
+TOOL = 'ocrd-sbb-textline-detector'
 
 
 class OcrdSbbTextlineDetectorRecognize(Processor):
