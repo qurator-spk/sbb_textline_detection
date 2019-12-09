@@ -38,7 +38,7 @@ __doc__ = \
     """
 
 
-class textlineerkenner:
+class textline_detector:
     def __init__(self, image_dir, dir_out, f_name, dir_models):
         self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
@@ -1475,7 +1475,7 @@ class textlineerkenner:
 def main(image, out, model):
     possibles = globals()  # XXX unused?
     possibles.update(locals())
-    x = textlineerkenner(image, out, None, model)
+    x = textline_detector(image, out, None, model)
     x.run()
 
 
