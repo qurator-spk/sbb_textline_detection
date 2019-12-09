@@ -1,27 +1,25 @@
-# Textline-Recognition
+# Textline Detection
 
-***
-# Tool
-This tool does textline detection of image and throw result as xml data.
+## Introduction
+This tool performs textline detection from document image data and returns the results as PAGE-XML.
 
-# Models
-In order to run this tool you need corresponding models. You can find them here:
+## Installation
 
+`pip install .`
+
+## Models
+In order to run this tool you also need trained models. You can download our pre-trained models from here:   
 https://file.spk-berlin.de:8443/textline_detection/
 
-# Installation
+## Usage
 
-sudo pip install .
-
-# Usage
-
-sbb_textline_detector -i 'image file name' -o 'directory to write output xml' -m 'directory of models'
-
+`sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>`
 
 ## Usage with OCR-D
+
 ~~~
 ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
-ocrd_sbb_textline_detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
+ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
         -p '{ "model": "/path/to/the/models/textline_detection" }'
 ~~~
 
