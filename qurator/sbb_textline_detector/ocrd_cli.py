@@ -52,6 +52,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
 
     def process(self):
         for (n, input_file) in enumerate(self.input_files):
+            page_id = input_file.pageId or input_file.ID
             log.info("INPUT FILE %i / %s", n, input_file)
 
             file_id = self._make_file_id(input_file, self.input_file_grp, n)
