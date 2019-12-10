@@ -51,8 +51,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         return image_file
 
     def process(self):
-        for n, page_id in enumerate(self.workspace.mets.physical_pages):
-            input_file = self.workspace.mets.find_files(fileGrp=self.input_file_grp, pageId=page_id)[0]
+        for (n, input_file) in enumerate(self.input_files):
             log.info("INPUT FILE %i / %s", n, input_file)
 
             file_id = self._make_file_id(input_file, self.input_file_grp, n)
