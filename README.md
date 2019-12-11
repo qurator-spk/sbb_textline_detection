@@ -1,7 +1,8 @@
 # Textline Detection
 
 ## Introduction
-This tool performs textline detection from document image data and returns the results as PAGE-XML.
+This tool performs printspace, region and textline detection from document image
+data and returns the results as PAGE-XML.
 
 ## Installation
 
