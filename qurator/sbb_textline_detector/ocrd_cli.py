@@ -72,7 +72,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
 
                 # Read segmentation results
                 tmp_filename = os.path.join(tmp_dirname, file_id) + '.xml'
-                tmp_pcgts = ocrd_models.ocrd_page.parse(tmp_filename)
+                tmp_pcgts = ocrd_models.ocrd_page.parse(tmp_filename, silence=True)
                 tmp_page = tmp_pcgts.get_Page()
 
             # Create a new PAGE file from the input file
