@@ -80,8 +80,14 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             page = pcgts.get_Page()
 
             # Merge results → PAGE file
+            if page.get_PrintSpace():
+                log.warning("Page already contained a printspace")
             page.set_PrintSpace(tmp_page.get_PrintSpace())
+            if page.get_ReadingOrder():
+                log.warning("Page already contained a reading order")
             page.set_ReadingOrder(tmp_page.get_ReadingOrder())
+            if page.get_TextRegion():
+                log.warning("Page already contained text regions")
             page.set_TextRegion(tmp_page.get_TextRegion())
 
             # Save metadata about this operation
