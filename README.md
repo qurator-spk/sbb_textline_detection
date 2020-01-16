@@ -10,7 +10,7 @@ data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab
 
 ## Models
 In order to run this tool you also need trained models. You can download our pretrained models from here:   
-~~https://file.spk-berlin.de:8443/textline_detection/~~
+(https://qurator-data.de/sbb_textline_detector/)
 
 ## Usage
 `sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>`
