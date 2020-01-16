@@ -1,23 +1,21 @@
 # Textline Detection
+> Detect textlines in document images
 
 ## Introduction
 This tool performs printspace, region and textline detection from document image
-data and returns the results as PAGE-XML.
+data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
 ## Installation
-
 `pip install .`
 
 ## Models
-In order to run this tool you also need trained models. You can download our pre-trained models from here:   
-https://file.spk-berlin.de:8443/textline_detection/
+In order to run this tool you also need trained models. You can download our pretrained models from here:   
+~~https://file.spk-berlin.de:8443/textline_detection/~~
 
 ## Usage
-
 `sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>`
 
 ## Usage with OCR-D
-
 ~~~
 ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
 ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
