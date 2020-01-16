@@ -8,14 +8,14 @@ data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab
 ## Installation
 `pip install .`
 
-## Models
+### Models
 In order to run this tool you also need trained models. You can download our pretrained models from here:   
 https://qurator-data.de/sbb_textline_detector/
 
 ## Usage
 `sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>`
 
-## Usage with OCR-D
+### Usage with OCR-D
 ~~~
 ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
 ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
