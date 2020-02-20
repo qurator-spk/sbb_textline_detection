@@ -5,6 +5,6 @@ tqdm
 keras
 shapely
 scikit-learn
-tensorflow-gpu < 2.0
+tensorflow-gpu ~=1.15.2
 scipy
 ocrd >= 2.0.0
