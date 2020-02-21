@@ -1713,9 +1713,8 @@ class textline_detector:
 
         return ang_int
 
-
-    def do_work_of_slopes(self,queue_of_slopes_per_textregion,queue_of_textlines_rectangle_per_textregion
-                          ,queue_of_textregion_box,boxes_per_process,queue_of_quntours_of_textregion,textline_mask_tot,contours_per_process):
+                          
+    def do_work_of_slopes(self,queue_of_all_params,boxes_per_process,textline_mask_tot,contours_per_process):
         
         slopes_per_each_subprocess = []
         bounding_box_of_textregion_per_each_subprocess=[]
@@ -1751,20 +1750,12 @@ class textline_detector:
             textlines_rectangles_per_each_subprocess.append(bounding_rectangle_of_textlines)
             bounding_box_of_textregion_per_each_subprocess.append(boxes_per_process[mv] )
 
-            
-
-        queue_of_slopes_per_textregion.put(slopes_per_each_subprocess)
-        queue_of_textlines_rectangle_per_textregion.put(textlines_rectangles_per_each_subprocess)
-        queue_of_textregion_box.put(bounding_box_of_textregion_per_each_subprocess )
-        queue_of_quntours_of_textregion.put(contours_textregion_per_each_subprocess)
+        
+        queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess])
 
     def get_slopes_and_deskew(self, contours,textline_mask_tot):
         num_cores =cpu_count()
-        
-        queue_of_slopes_per_textregion = Queue()
-        queue_of_textlines_rectangle_per_textregion=Queue()
-        queue_of_textregion_box=Queue()
-        queue_of_quntours_of_textregion=Queue()
+        queue_of_all_params = Queue()
         
         processes = []
         nh=np.linspace(0, len(self.boxes), num_cores+1)
@@ -1773,8 +1764,8 @@ class textline_detector:
         for i in range(num_cores):
             boxes_per_process=self.boxes[int(nh[i]):int(nh[i+1])]
             contours_per_process=contours[int(nh[i]):int(nh[i+1])]
-            processes.append(Process(target=self.do_work_of_slopes, args=(queue_of_slopes_per_textregion,queue_of_textlines_rectangle_per_textregion,
-                                                                          queue_of_textregion_box,  boxes_per_process, queue_of_quntours_of_textregion, textline_mask_tot, contours_per_process)))
+                                                                          
+            processes.append(Process(target=self.do_work_of_slopes, args=(queue_of_all_params,  boxes_per_process, textline_mask_tot, contours_per_process)))
         
         for i in range(num_cores):
             processes[i].start()
@@ -1785,10 +1776,12 @@ class textline_detector:
         self.boxes=[]
         
         for i in range(num_cores):
-            slopes_for_sub_process=queue_of_slopes_per_textregion.get(True)
-            boxes_for_sub_process=queue_of_textregion_box.get(True)
-            polys_for_sub_process=queue_of_textlines_rectangle_per_textregion.get(True)
-            contours_for_subprocess=queue_of_quntours_of_textregion.get(True)
+            list_all_par=queue_of_all_params.get(True)
+            
+            slopes_for_sub_process=list_all_par[0]
+            polys_for_sub_process=list_all_par[1]
+            boxes_for_sub_process=list_all_par[2]
+            contours_for_subprocess=list_all_par[3]
             
             for j in range(len(slopes_for_sub_process)):
                 self.slopes.append(slopes_for_sub_process[j])
