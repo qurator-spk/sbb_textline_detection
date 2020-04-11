@@ -194,7 +194,7 @@ class textline_detector:
         self.height_org = self.image.shape[0]
         self.width_org = self.image.shape[1]
 
-        if self.image.shape[0] < 1000:
+        if self.image.shape[0] < 2500:
             self.img_hight_int = 2800
             self.img_width_int = int(self.img_hight_int * self.image.shape[1] / float(self.image.shape[0]))
 
