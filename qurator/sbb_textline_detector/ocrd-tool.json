@@ -4,9 +4,9 @@
   "tools": {
     "ocrd-sbb-textline-detector": {
       "executable": "ocrd-sbb-textline-detector",
-      "categories": ["Image preprocessing", "Layout analysis", "Text recognition and optimization"],
-      "description": "Detect lines",
-      "steps": ["layout/segmentation/line"],
+      "categories": ["Layout analysis"],
+      "description": "Printspace, region and textline detection",
+      "steps": ["layout/segmentation/region", "layout/segmentation/line"],
       "input_file_grp": [
         "OCR-D-IMG"
       ],
