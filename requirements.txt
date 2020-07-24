@@ -2,7 +2,7 @@ opencv-python-headless
 matplotlib
 seaborn
 tqdm
-keras
+keras == 2.3.*
 shapely
 scikit-learn
 tensorflow-gpu ~=1.15.2
