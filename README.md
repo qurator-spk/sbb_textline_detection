@@ -4,6 +4,11 @@
 ## Introduction
 This tool performs printspace, region and textline detection from document image
 data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+The goal of this project is to extract textlines of a document to feed an ocr model. This is achieved by four successive stages as follows:
+* Item 1 Printspace or border extraction
+* Item 2 Layout analysis
+* Item 3 Textline detection
+* Item 4 Heuristic methods
 
 ## Installation
 `pip install .`
