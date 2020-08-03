@@ -9,6 +9,12 @@ The goal of this project is to extract textlines of a document to feed an ocr mo
 * Layout analysis
 * Textline detection
 * Heuristic methods
+First three stages are done by using a pixel-wise segmentation. You can train your own model using this tool (https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+
+## Printspace or border extraction
+From ocr point of view and in order to avoid texts outside printspace region, you need to detect and extract printspace region. As mentioned briefly earlier this is done by a binary pixelwise-segmentation. We have trained our model by a dataset of 2000 documents where about 1200 of them was from dhsegment project (you can download the dataset from here https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip) and the rest was annotated by myself using our dataset in SBB. 
+This is worthy to mention that for page (printspace or border) extractation you have to feed model whole image at once and not in patches.
+
 
 ## Installation
 `pip install .`
