@@ -8,7 +8,7 @@ The goal of this project is to extract textlines of a document to feed an ocr mo
 * Printspace or border extraction
 * Layout analysis
 * Textline detection
-* Heuristic methods
+* Heuristic methods  
 First three stages are done by using a pixel-wise segmentation. You can train your own model using this tool (https://github.com/qurator-spk/sbb_pixelwise_segmentation).
 
 ## Printspace or border extraction
