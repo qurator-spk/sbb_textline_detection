@@ -77,6 +77,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
 
             # Create a new PAGE file from the input file
             pcgts = page_from_file(self.workspace.download_file(input_file))
+            pcgts.set_pcGtsId(file_id)
             page = pcgts.get_Page()
 
             # Merge results → PAGE file
