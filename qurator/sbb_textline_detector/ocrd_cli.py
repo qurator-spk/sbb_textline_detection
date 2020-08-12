@@ -9,7 +9,13 @@ from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 from ocrd_modelfactory import page_from_file
 from ocrd_models import OcrdFile
 from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, LabelType
-from ocrd_utils import concat_padded, getLogger, MIMETYPE_PAGE
+from ocrd_utils import (
+    assert_file_grp_cardinality,
+    getLogger,
+    make_file_id,
+    MIMETYPE_PAGE
+)
+
 from pkg_resources import resource_string
 
 from qurator.sbb_textline_detector import textline_detector
@@ -27,19 +33,12 @@ def ocrd_sbb_textline_detector(*args, **kwargs):
 
 TOOL = 'ocrd-sbb-textline-detector'
 
-
 class OcrdSbbTextlineDetectorRecognize(Processor):
 
     def __init__(self, *args, **kwargs):
         kwargs['ocrd_tool'] = OCRD_TOOL['tools'][TOOL]
         kwargs['version'] = OCRD_TOOL['version']
         super(OcrdSbbTextlineDetectorRecognize, self).__init__(*args, **kwargs)
-
-    def _make_file_id(self, input_file, input_file_grp, n):
-        file_id = input_file.ID.replace(input_file_grp, self.output_file_grp)
-        if file_id == input_file.ID:
-            file_id = concat_padded(self.output_file_grp, n)
-        return file_id
 
     def _resolve_image_file(self, input_file: OcrdFile) -> str:
         if input_file.mimetype == MIMETYPE_PAGE:
@@ -51,11 +50,14 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         return image_file
 
     def process(self):
+        assert_file_grp_cardinality(self.input_file_grp, 1)
+        assert_file_grp_cardinality(self.output_file_grp, 1)
+
         for (n, input_file) in enumerate(self.input_files):
             page_id = input_file.pageId or input_file.ID
             log.info("INPUT FILE %i / %s", n, input_file)
 
-            file_id = self._make_file_id(input_file, self.input_file_grp, n)
+            file_id = make_file_id(input_file, self.output_file_grp)
 
             # Process the files
             try:
