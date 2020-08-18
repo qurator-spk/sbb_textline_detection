@@ -4,35 +4,32 @@
 > Detect textlines in document images
 
 ## Introduction
-This tool performs printspace, region and textline detection from document image
-data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
-The goal of this project is to extract textlines of a document to feed an ocr model. This is achieved by four successive stages as follows:
-* Printspace or border extraction
-* Layout detection
-* Textline detection
-* Heuristic methods
-<br/>
-First three stages are done by using a pixel-wise segmentation. You can train your own model using this tool (https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+This tool performs border, region and textline detection from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+The goal of this project is to extract textlines of a document in order to feed them to an OCR model. This is achieved by four successive stages as follows:
+* [Border detection](https://github.com/qurator-spk/sbb_textline_detection#border-detection)
+* [Layout detection](https://github.com/qurator-spk/sbb_textline_detection#layout-detection)
+* [Textline detection](https://github.com/qurator-spk/sbb_textline_detection#textline-detection)
+* [Heuristic methods](https://github.com/qurator-spk/sbb_textline_detection#heuristic-methods)
 
-## Printspace or border extraction
-From ocr point of view and in order to avoid texts outside printspace region, you need to detect and extract printspace region. As mentioned briefly earlier this is done by a binary pixelwise-segmentation. We have trained our model by a dataset of 2000 documents where about 1200 of them was from dhsegment project (you can download the dataset from here https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip) and the rest was annotated by myself using our dataset in SBB.<br/>
-This is worthy to mention that for page (printspace or border) extractation you have to feed model whole image at once and not in patches.
+The first three stages are based on [pixelwise segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+
+## Border detection
+For the purpose of text recognition (OCR) and in order to avoid noise being introduced from texts outside the printspace, one first needs to detect the border of the printed frame. This is done by a binary pixelwise-segmentation model trained on a dataset of 2,000 documents where about 1,200 of them come from the [dhSegment](https://github.com/dhlab-epfl/dhSegment/) project (you can download the dataset from [here](https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip)) and the remainder having been annotated in SBB. For border detection, the model needs to be fed with the whole image at once rather than separated in patches.
 
 ## Layout detection
-At this point we look for textregions, that is why that we needed to do a layout detection. Here again a pixel-wise segmentation is implemented. For this purpose we had to provide training images and labels. In SBB we have a good resources and gt for layout of documents. By historical documents we have some main regions like , textregion, separators, images, tables and background and each has its own subclasses. For example for textregions we have subclasses like header, heading, drop capitals , main text and etc. As we can see we have many classes and in fact the ideal is to classify documents based on all those classes. But this is really a tough job and since here our focus is on ocr we decided to train our model with main regions including background, textregions, images and separators. <br/>
-We have used 131 documents to train our model. Of course augmentation also hase done but here I do not want to explain training process in detail.
+As a next step, text regions need to be identified by means of layout detection. Again a pixelwise segmentation model was trained on 131 labeled images from the SBB digital collections, including some data augmentation. Since the target of this tool are historical documents, we consider as main region types text regions, separators, images, tables and background - each with their own subclasses, e.g. in the case of text regions, subclasses like header/heading, drop capital, main body text etc. While it would be desirable to detect and classify each of these classes in a granular way, there are also limitations due to having a suitably large and balanced training set. Accordingly, the current version of this tool is focussed on the main region types background, text region, image and separator. 
 
 ## Textline detection
-Last step is to do a binary pixelwise segmentation in order to classify textline pixels in document. For textline segmentation we had GT of documents with only one columns. This means that scale of documents were almost same , we tried to resolve this by feeding model with different scales of documents. However, even with this augmentation it was not easy to cover all spectrum of scales. So, this time we tried to use trained model and with tuning the parameters for multicolumns documents detect textlines. We then used this results also as GT to train new model which was much more robust. 
+In a subsequent step, binary pixelwise segmentation is used again to classify pixels in a document that constitute textlines. For textline segmentation, a model was initially trained on documents with only one column/block of text and some augmentation with regards to scaling. By fine-tuning the parameters also for multi-column documents, additional training data was produced that resulted in a much more robust textline detection model.
 
 ## Heuristic methods
-After training models, we have used them to predict and classify documents in each step and then tried to use results to extract desirable textlines recatngles.<br/>
-After applying page extraction model we then found the biggest contour and after fitting a bounding box we were able to crop image inside this box.<br/>
-By layout detection, it was so important for us to detect textregions clearly separately that is why we have scaled image up. With this trick it was easier for model to detect background spaces between textregions. <br/>
-We have set a minimum textregion area in respect to area of whole image, so those small textregions which are actullay noises in our prediction are filtered. At the end we have found contours of textregions  and corresponding boundin boxes. <br/>
-Textline segmentation is also done and using bounding boxes from textregions we are now able to get textline segmentation for each individual textregion. The first thing that we face by historical documents is that documents are skewed and even worser that each textregion can be skewed in a differnt manner. So, it was a key feature to deskew each textregion. Actually we have used textline segmengtation in each region to deskew corresponding region. After deskewing , calculating distribution of textlines segmentation result in X-direction  helped us to find starting and ending point of every single textline. You can imagine that the hills in mentioned distribution are actully where we have background and no textline. Finally, using this coordinates we were able to find bounding rectangle for each textline.
-
-
+Some heuristic methods are also employed to further improve the model predictions: 
+* After border detection, the largest contour is determined by a bounding box and the image cropped to these coordinates. 
+* For text region detection, the image is scaled up to make it easier for the model to detect background space between text regions.
+* A minimum area is defined for text regions in relation to the overall image dimensions, so that very small regions that are actually noise can be filtered out. 
+* Deskewing is applied on the text region level (due to regions having different degrees of skew) in order to improve the textline segmentation result. 
+* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels.
+* Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
 ## Installation
 `pip install .`
@@ -51,8 +48,4 @@ ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
         -p '{ "model": "/path/to/the/models/textline_detection" }'
 ~~~
 
-Segmentation works on raw RGB images, but retains
-`AlternativeImage`s from binarization steps, so it's OK to do
-binarization first, then perform the textline detection. The used binarization
-processor must produce an `AlternativeImage` for the binarized image, not
-replace the original raw RGB image.
+Segmentation works on raw RGB images, but retains `AlternativeImage`s from binarization steps, so it's OK to perform binarization first followed by textline detection. The used binarization processor must produce an `AlternativeImage` for the binarized image, rather than replace the original raw RGB image.
