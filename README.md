@@ -4,22 +4,20 @@
 > Detect textlines in document images
 
 ## Introduction
-This tool performs printspace, region and textline detection from document image
-data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
-The goal of this project is to extract textlines of a document to feed an ocr model. This is achieved by four successive stages as follows:
-* Printspace or border extraction
-* Layout detection
-* Textline detection
-* Heuristic methods
-<br/>
-First three stages are done by using a pixel-wise segmentation. You can train your own model using this tool (https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+This tool performs border, region and textline detection from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+The goal of this project is to extract textlines of a document in order to feed them to an OCR model. This is achieved by four successive stages as follows:
+* [Border detection](https://github.com/qurator-spk/sbb_textline_detection#border-detection)
+* [Layout detection](https://github.com/qurator-spk/sbb_textline_detection#layout-detection)
+* [Textline detection](https://github.com/qurator-spk/sbb_textline_detection#textline-detection)
+* [Heuristic methods](https://github.com/qurator-spk/sbb_textline_detection#heuristic-methods)
 
-## Printspace or border extraction
-From ocr point of view and in order to avoid texts outside printspace region, you need to detect and extract printspace region. As mentioned briefly earlier this is done by a binary pixelwise-segmentation. We have trained our model by a dataset of 2000 documents where about 1200 of them was from dhsegment project (you can download the dataset from here https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip) and the rest was annotated by myself using our dataset in SBB.<br/>
-This is worthy to mention that for page (printspace or border) extractation you have to feed model whole image at once and not in patches.
+The first three stages are based on [pixelwise segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+
+## Border detection
+For the purpose of text recognition (OCR) and in order to avoid noise being introduced from texts outside the printspace, one first needs to detect the border of the printed frame. This is done by a binary pixelwise-segmentation model trained on a dataset of 2,000 documents where about 1,200 of them come from the [dhSegment](https://github.com/dhlab-epfl/dhSegment/) project (you can download the dataset from [here](https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip) and the remainder having been annotated in SBB. For border detection, the model needs to be fed with the whole image at once rather than separated in patches.
 
 ## Layout detection
-At this point we look for textregions, that is why that we needed to do a layout detection. Here again a pixel-wise segmentation is implemented. For this purpose we had to provide training images and labels. In SBB we have a good resources and gt for layout of documents. By historical documents we have some main regions like , textregion, separators, images, tables and background and each has its own subclasses. For example for textregions we have subclasses like header, heading, drop capitals , main text and etc. As we can see we have many classes and in fact the ideal is to classify documents based on all those classes. But this is really a tough job and since here our focus is on ocr we decided to train our model with main regions including background, textregions, images and separators. <br/>
+As a next step text regions need to be identified in layout detection. Again a pixelwise segmentation is implemented. For this purpose we had to provide training images and labels. In SBB we have a good resources and gt for layout of documents. By historical documents we have some main regions like , textregion, separators, images, tables and background and each has its own subclasses. For example for textregions we have subclasses like header, heading, drop capitals , main text and etc. As we can see we have many classes and in fact the ideal is to classify documents based on all those classes. But this is really a tough job and since here our focus is on ocr we decided to train our model with main regions including background, textregions, images and separators. <br/>
 We have used 131 documents to train our model. Of course augmentation also hase done but here I do not want to explain training process in detail.
 
 ## Textline detection
