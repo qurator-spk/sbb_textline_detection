@@ -20,18 +20,16 @@ For the purpose of text recognition (OCR) and in order to avoid noise being intr
 As a next step, text regions need to be identified by means of layout detection. Again a pixelwise segmentation model was trained on 131 labeled images from the SBB digital collections, including some data augmentation. Since the target of this tool are historical documents, we consider as main region types text regions, separators, images, tables and background - each with their own subclasses, e.g. in the case of text regions, subclasses like header/heading, drop capital, main body text etc. While it would be desirable to detect and classify each of these classes in a granular way, there are also limitations due to having a suitably large and balanced training set. Accordingly, the current version of this tool is focussed on the main region types background, text region, image and separator. 
 
 ## Textline detection
-In a subsequent step, a binary pixelwise segmentation is used again to classify pixels in a document that constitute textlines. For textline segmentation, a model was initially trained on documents with only one column/block of text and some augmentation with regards to scaling. By fine-tuning parameters also for multi-column documents, additional training data was produced that resulted in a much more robust textline detection model.
+In a subsequent step, binary pixelwise segmentation is used again to classify pixels in a document that constitute textlines. For textline segmentation, a model was initially trained on documents with only one column/block of text and some augmentation with regards to scaling. By fine-tuning the parameters also for multi-column documents, additional training data was produced that resulted in a much more robust textline detection model.
 
 ## Heuristic methods
-After training the models, they were used to classify documents according to each step and then tried to use results to extract desirable textlines recatngles.
-
-After applying page extraction model we then found the biggest contour and after fitting a bounding box we were able to crop image inside this box.<br/>
-
-By layout detection, it was so important for us to detect textregions clearly separately that is why we have scaled image up. With this trick it was easier for model to detect background spaces between textregions. <br/>
-
-We have set a minimum textregion area in respect to area of whole image, so those small textregions which are actullay noises in our prediction are filtered. At the end we have found contours of textregions  and corresponding boundin boxes. <br/>
-
-Textline segmentation is also done and using bounding boxes from textregions we are now able to get textline segmentation for each individual textregion. The first thing that we face by historical documents is that documents are skewed and even worser that each textregion can be skewed in a differnt manner. So, it was a key feature to deskew each textregion. Actually we have used textline segmengtation in each region to deskew corresponding region. After deskewing , calculating distribution of textlines segmentation result in X-direction  helped us to find starting and ending point of every single textline. You can imagine that the hills in mentioned distribution are actully where we have background and no textline. Finally, using this coordinates we were able to find bounding rectangle for each textline.
+Some heuristic methods are also employed to further improve the model predictions: 
+* After border detection, the largest contour is determined by a bounding box and the image cropped to these coordinates. 
+* For text region detection, the image is scaled up to make it easier for the model to detect background space between text regions.
+* A minimum area is defined for text regions in relation to the overall image dimensions, so that very small regions that are actually noise can be filtered out. 
+* Deskewing is applied on the text region level (due to regions having different degrees of skew) in order to improve the textline segmentation result. 
+* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels.
+* Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
 ## Installation
 `pip install .`
