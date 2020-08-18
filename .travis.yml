@@ -1,0 +1,16 @@
+# Travis CI configuration for sbb_textline_detector
+
+dist: xenial  # required for Python >= 3.7
+language: python
+python:
+  # sbb_textline_detector requires Python 3.6 or newer
+  - "3.6"
+  - "3.7"
+  # tensorflow-gpu<2.0 is not available for Python 3.8
+
+install:
+  - pip install -U pip
+  - pip install .
+
+script:
+  - ocrd-sbb-textline-detector --help
