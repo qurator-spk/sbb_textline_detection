@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/qurator-spk/sbb_textline_detection.svg?branch=master)](https://travis-ci.org/qurator-spk/sbb_textline_detection)
+
 # Textline Detection
 > Detect textlines in document images
 
