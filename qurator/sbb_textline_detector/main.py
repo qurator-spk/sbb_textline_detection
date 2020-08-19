@@ -1938,7 +1938,7 @@ class textline_detector:
 
 
         
-        page_print_sub=ET.SubElement(page, 'PrintSpace')
+        page_print_sub=ET.SubElement(page, 'Border')
         coord_page = ET.SubElement(page_print_sub, 'Coords')
         points_page_print=''
 
