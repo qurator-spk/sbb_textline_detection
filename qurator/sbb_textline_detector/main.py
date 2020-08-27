@@ -3,6 +3,7 @@
 __version__ = '1.0'
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 import cv2
 import numpy as np
@@ -17,8 +18,9 @@ import math
 from shapely import geometry
 from sklearn.cluster import KMeans
 import gc
-from keras import backend as K
 import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+from keras import backend as K
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import xml.etree.ElementTree as ET
@@ -29,8 +31,10 @@ from multiprocessing import Process, Queue, cpu_count
 import datetime
 
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
+warnings.filterwarnings('ignore')
+
+##with warnings.catch_warnings():
+    ##warnings.simplefilter("ignore",category=RuntimeWarning)
 
 __doc__ = \
     """
@@ -2063,23 +2067,30 @@ class textline_detector:
         t2=time.time()
         
         
-        # extract text regions and corresponding contours and surrounding box
-        text_regions=self.extract_text_regions(image_page)
-        
-        text_regions = cv2.erode(text_regions, self.kernel, iterations=3)
-        text_regions = cv2.dilate(text_regions, self.kernel, iterations=4)
-        
-        #plt.imshow(text_regions[:,:,0])
-        #plt.show()
+        try:
+            # extract text regions and corresponding contours and surrounding box
+            text_regions=self.extract_text_regions(image_page)
+            
+            text_regions = cv2.erode(text_regions, self.kernel, iterations=3)
+            text_regions = cv2.dilate(text_regions, self.kernel, iterations=4)
+            
+            #plt.imshow(text_regions[:,:,0])
+            #plt.show()
 
-        contours=self.get_text_region_contours_and_boxes(text_regions)
+            contours=self.get_text_region_contours_and_boxes(text_regions)
         
-
         
-        ##########  
-        K.clear_session()
-        gc.collect()
         
+            ##########  
+            K.clear_session()
+            gc.collect()
+        
+        
+        except:
+            text_regions=None
+            contours=[]
+            
+            
         t3=time.time()
 
         
