@@ -20,8 +20,6 @@ from pkg_resources import resource_string
 
 from qurator.sbb_textline_detector import textline_detector
 
-log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
-
 OCRD_TOOL = json.loads(resource_string(__name__, 'ocrd-tool.json').decode('utf8'))
 
 
@@ -50,6 +48,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         return image_file
 
     def process(self):
+        log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
         assert_file_grp_cardinality(self.input_file_grp, 1)
         assert_file_grp_cardinality(self.output_file_grp, 1)
 
