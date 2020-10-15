@@ -5,6 +5,7 @@ tqdm
 keras == 2.3.*
 shapely
 scikit-learn
+numpy == 1.18.*  # XXX for tensorflow-gpu 1.15
 tensorflow-gpu ~=1.15.2
 scipy
 ocrd >= 2.0.0
