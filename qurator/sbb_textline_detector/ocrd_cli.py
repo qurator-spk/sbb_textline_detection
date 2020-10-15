@@ -87,32 +87,39 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             page = pcgts.get_Page()
 
             # Merge results → PAGE file
+
+            # 1. Border
             if page.get_Border():
                 log.warning("Page already contained a border")
-            page.set_Border(tmp_page.get_Border())
+            # We need to translate the coordinates:
+            text_border = tmp_page.get_Border()
+            coords = text_border.get_Coords().get_points()
+            polygon = polygon_from_points(coords)
+            polygon_new = coordinates_for_segment(polygon, page_image, page_coords)
+            points_new = points_from_polygon(polygon_new)
+            coords_new = CoordsType(points=points_new)
+            text_border.set_Coords(coords_new)
+            page.set_Border(text_border)
+
+            # 2. ReadingOrder
             if page.get_ReadingOrder():
                 log.warning("Page already contained a reading order")
             page.set_ReadingOrder(tmp_page.get_ReadingOrder())
 
-
+            # 3. TextRegion
             if page.get_TextRegion():
                 log.warning("Page already contained text regions")
-
-            # We need to translate the coordinates in case we deal with a
-            # cropped image:
+            # We need to translate the coordinates:
             text_regions_new = []
             for text_region in tmp_page.get_TextRegion():
                 coords = text_region.get_Coords().get_points()
                 polygon = polygon_from_points(coords)
-
                 polygon_new = coordinates_for_segment(polygon, page_image, page_coords)
                 points_new = points_from_polygon(polygon_new)
                 coords_new = CoordsType(points=points_new)
                 text_region.set_Coords(coords_new)
-
                 text_regions_new.append(text_region)
             page.set_TextRegion(text_regions_new)
-
 
             # Save metadata about this operation
             metadata = pcgts.get_Metadata()
