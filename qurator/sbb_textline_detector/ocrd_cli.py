@@ -8,12 +8,15 @@ from ocrd import Processor
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 from ocrd_modelfactory import page_from_file
 from ocrd_models import OcrdFile
-from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, LabelType
+from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, LabelType, \
+    CoordsType
 from ocrd_utils import (
     assert_file_grp_cardinality,
     getLogger,
     make_file_id,
-    MIMETYPE_PAGE
+    MIMETYPE_PAGE,
+    coordinates_for_segment,
+    polygon_from_points, points_from_polygon,
 )
 
 from pkg_resources import resource_string
@@ -38,14 +41,6 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         kwargs['version'] = OCRD_TOOL['version']
         super(OcrdSbbTextlineDetectorRecognize, self).__init__(*args, **kwargs)
 
-    def _resolve_image_file(self, input_file: OcrdFile) -> str:
-        if input_file.mimetype == MIMETYPE_PAGE:
-            pcgts = page_from_file(self.workspace.download_file(input_file))
-            page = pcgts.get_Page()
-            image_file = page.imageFilename
-        else:
-            image_file = input_file.local_filename
-        return image_file
 
     def process(self):
         log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
@@ -64,9 +59,20 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             except FileExistsError:
                 pass
 
+            pcgts = page_from_file(self.workspace.download_file(input_file))
+            page = pcgts.get_Page()
+            page_image, page_coords, page_image_info = \
+                self.workspace.image_from_page(
+                        page, page_id,
+                        feature_filter='binarized,grayscale_normalized'
+                )
+
             with tempfile.TemporaryDirectory() as tmp_dirname:
+                # Save the image
+                image_file = tempfile.mkstemp(dir=tmp_dirname, suffix='.png')[1]
+                page_image.save(image_file)
+
                 # Segment the image
-                image_file = self._resolve_image_file(input_file)
                 model = self.parameter['model']
                 x = textline_detector(image_file, tmp_dirname, file_id, model)
                 x.run()
@@ -77,7 +83,6 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                 tmp_page = tmp_pcgts.get_Page()
 
             # Create a new PAGE file from the input file
-            pcgts = page_from_file(self.workspace.download_file(input_file))
             pcgts.set_pcGtsId(file_id)
             page = pcgts.get_Page()
 
@@ -88,9 +93,26 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             if page.get_ReadingOrder():
                 log.warning("Page already contained a reading order")
             page.set_ReadingOrder(tmp_page.get_ReadingOrder())
+
+
             if page.get_TextRegion():
                 log.warning("Page already contained text regions")
-            page.set_TextRegion(tmp_page.get_TextRegion())
+
+            # We need to translate the coordinates in case we deal with a
+            # cropped image:
+            text_regions_new = []
+            for text_region in tmp_page.get_TextRegion():
+                coords = text_region.get_Coords().get_points()
+                polygon = polygon_from_points(coords)
+
+                polygon_new = coordinates_for_segment(polygon, page_image, page_coords)
+                points_new = points_from_polygon(polygon_new)
+                coords_new = CoordsType(points=points_new)
+                text_region.set_Coords(coords_new)
+
+                text_regions_new.append(text_region)
+            page.set_TextRegion(text_regions_new)
+
 
             # Save metadata about this operation
             metadata = pcgts.get_Metadata()
