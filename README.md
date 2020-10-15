@@ -39,13 +39,17 @@ In order to run this tool you also need trained models. You can download our pre
 https://qurator-data.de/sbb_textline_detector/
 
 ## Usage
-`sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>`
+
+The basic command-line interface can be called like this:
+
+    sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>
 
 ### Usage with OCR-D
-~~~
-ocrd-example-binarize -I OCR-D-IMG -O OCR-D-IMG-BIN
-ocrd-sbb-textline-detector -I OCR-D-IMG-BIN -O OCR-D-SEG-LINE-SBB \
-        -p '{ "model": "/path/to/the/models/textline_detection" }'
-~~~
 
-Segmentation works on raw RGB images, but retains `AlternativeImage`s from binarization steps, so it's OK to perform binarization first followed by textline detection. The used binarization processor must produce an `AlternativeImage` for the binarized image, rather than replace the original raw RGB image.
+In addition, there is a CLI for [OCR-D](https://ocr-d.de/en/spec/cli):
+
+    ocrd-sbb-textline-detector -I OCR-D-IMG -O OCR-D-SEG-LINE-SBB -P model /path/to/the/models/textline_detection
+
+Segmentation works on raw (RGB/grayscale) images, but honours `AlternativeImage`s from earlier preprocessing steps, so it's OK to perform (say) deskewing first, followed by textline detection. Results from previous cropping or binarization steps are allowed and retained, but will be ignored. (So these are only useful if themselves needed for deskewing or dewarping prior to segmentation.) 
+
+This processor will replace any previously existing `Border`, `ReadingOrder` and `TextRegion` instances (but keep other region types unchanged).
