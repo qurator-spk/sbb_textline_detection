@@ -64,7 +64,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             page_image, page_coords, page_image_info = \
                 self.workspace.image_from_page(
                         page, page_id,
-                        feature_filter='binarized,grayscale_normalized'
+                        feature_filter='cropped,binarized,grayscale_normalized'
                 )
 
             with tempfile.TemporaryDirectory() as tmp_dirname:
