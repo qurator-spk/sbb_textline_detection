@@ -8,12 +8,15 @@ from ocrd import Processor
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 from ocrd_modelfactory import page_from_file
 from ocrd_models import OcrdFile
-from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, LabelType
+from ocrd_models.ocrd_page_generateds import MetadataItemType, LabelsType, LabelType, \
+    CoordsType
 from ocrd_utils import (
     assert_file_grp_cardinality,
     getLogger,
     make_file_id,
-    MIMETYPE_PAGE
+    MIMETYPE_PAGE,
+    coordinates_for_segment,
+    polygon_from_points, points_from_polygon,
 )
 
 from pkg_resources import resource_string
@@ -90,9 +93,26 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             if page.get_ReadingOrder():
                 log.warning("Page already contained a reading order")
             page.set_ReadingOrder(tmp_page.get_ReadingOrder())
+
+
             if page.get_TextRegion():
                 log.warning("Page already contained text regions")
-            page.set_TextRegion(tmp_page.get_TextRegion())
+
+            # We need to translate the coordinates in case we deal with a
+            # cropped image:
+            text_regions_new = []
+            for text_region in tmp_page.get_TextRegion():
+                coords = text_region.get_Coords().get_points()
+                polygon = polygon_from_points(coords)
+
+                polygon_new = coordinates_for_segment(polygon, page_image, page_coords)
+                points_new = points_from_polygon(polygon_new)
+                coords_new = CoordsType(points=points_new)
+                text_region.set_Coords(coords_new)
+
+                text_regions_new.append(text_region)
+            page.set_TextRegion(text_regions_new)
+
 
             # Save metadata about this operation
             metadata = pcgts.get_Metadata()
