@@ -38,14 +38,6 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         kwargs['version'] = OCRD_TOOL['version']
         super(OcrdSbbTextlineDetectorRecognize, self).__init__(*args, **kwargs)
 
-    def _resolve_image_file(self, input_file: OcrdFile) -> str:
-        if input_file.mimetype == MIMETYPE_PAGE:
-            pcgts = page_from_file(self.workspace.download_file(input_file))
-            page = pcgts.get_Page()
-            image_file = page.imageFilename
-        else:
-            image_file = input_file.local_filename
-        return image_file
 
     def process(self):
         log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
@@ -64,9 +56,20 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
             except FileExistsError:
                 pass
 
+            pcgts = page_from_file(self.workspace.download_file(input_file))
+            page = pcgts.get_Page()
+            page_image, page_coords, page_image_info = \
+                self.workspace.image_from_page(
+                        page, page_id,
+                        feature_filter='binarized,grayscale_normalized'
+                )
+
             with tempfile.TemporaryDirectory() as tmp_dirname:
+                # Save the image
+                image_file = tempfile.mkstemp(dir=tmp_dirname, suffix='.png')[1]
+                page_image.save(image_file)
+
                 # Segment the image
-                image_file = self._resolve_image_file(input_file)
                 model = self.parameter['model']
                 x = textline_detector(image_file, tmp_dirname, file_id, model)
                 x.run()
@@ -77,7 +80,6 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                 tmp_page = tmp_pcgts.get_Page()
 
             # Create a new PAGE file from the input file
-            pcgts = page_from_file(self.workspace.download_file(input_file))
             pcgts.set_pcGtsId(file_id)
             page = pcgts.get_Page()
 
