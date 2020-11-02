@@ -44,6 +44,8 @@ The basic command-line interface can be called like this:
 
     sbb_textline_detector -i <image file name> -o <directory to write output xml> -m <directory of models>
 
+The tool does accept raw (RGB/grayscale) images as input, but results will be much improved when a properly binarized image is used instead. We also provide a [tool](https://github.com/qurator-spk/sbb_binarization) to perform this binarization step.
+
 ### Usage with OCR-D
 
 In addition, there is a CLI for [OCR-D](https://ocr-d.de/en/spec/cli):
