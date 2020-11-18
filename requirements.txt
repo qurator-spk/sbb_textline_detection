@@ -3,6 +3,7 @@ matplotlib
 seaborn
 tqdm
 keras == 2.3.*
+h5py < 3
 shapely
 scikit-learn
 numpy == 1.18.*  # XXX for tensorflow-gpu 1.15
