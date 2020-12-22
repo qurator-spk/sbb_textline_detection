@@ -2066,89 +2066,96 @@ class textline_detector:
         gc.collect()
         t2=time.time()
         
-        
         try:
-            # extract text regions and corresponding contours and surrounding box
-            text_regions=self.extract_text_regions(image_page)
-            
-            text_regions = cv2.erode(text_regions, self.kernel, iterations=3)
-            text_regions = cv2.dilate(text_regions, self.kernel, iterations=4)
-            
-            #plt.imshow(text_regions[:,:,0])
-            #plt.show()
+            try:
+                # extract text regions and corresponding contours and surrounding box
+                text_regions=self.extract_text_regions(image_page)
+                
+                text_regions = cv2.erode(text_regions, self.kernel, iterations=3)
+                text_regions = cv2.dilate(text_regions, self.kernel, iterations=4)
+                
+                #plt.imshow(text_regions[:,:,0])
+                #plt.show()
 
-            contours=self.get_text_region_contours_and_boxes(text_regions)
-        
-        
-        
-            ##########  
+                contours=self.get_text_region_contours_and_boxes(text_regions)
+            
+            
+            
+                ##########  
+                K.clear_session()
+                gc.collect()
+            
+            
+            except:
+                text_regions=None
+                contours=[]
+                
+                
+            t3=time.time()
+
+            
+            if len(contours)>0:
+                
+
+                
+                # extracting textlines using segmentation
+                textline_mask_tot=self.textline_contours(image_page)
+                ##########  
+                K.clear_session()
+                gc.collect()
+                
+                t4=time.time()
+                
+                
+                # calculate the slope for deskewing for each box of text region.
+                contours=self.get_slopes_and_deskew(contours,textline_mask_tot)
+                
+                gc.collect()
+                t5=time.time()
+                
+                
+                # get orders of each textregion. This method by now only works for one column documents. 
+                indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
+                order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
+                
+                
+                ##########  
+                gc.collect()
+                t6=time.time()
+                
+                
+                self.get_all_image_patches_coordination(image_page)
+                
+                ########## 
+                ##########  
+                gc.collect()
+                
+                t7=time.time()
+
+            else:
+                contours=[]
+                order_of_texts=None
+                id_of_texts=None
+            self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
+
+            # Destroy the current Keras session/graph to free memory
             K.clear_session()
-            gc.collect()
-        
-        
+            
+            print( "time total = "+"{0:.2f}".format(time.time()-t1) )
+            print( "time needed for page extraction = "+"{0:.2f}".format(t2-t1) )
+            print( "time needed for text region extraction and get contours = "+"{0:.2f}".format(t3-t2) )
+            if len(contours)>0:
+                print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
+                print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t5-t4) )
+                print( "time needed to get order of regions = "+"{0:.2f}".format(t6-t5) )
+                print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
         except:
-            text_regions=None
-            contours=[]
-            
-            
-        t3=time.time()
-
-        
-        if len(contours)>0:
-            
-
-            
-            # extracting textlines using segmentation
-            textline_mask_tot=self.textline_contours(image_page)
-            ##########  
-            K.clear_session()
-            gc.collect()
-            
-            t4=time.time()
-            
-            
-            # calculate the slope for deskewing for each box of text region.
-            contours=self.get_slopes_and_deskew(contours,textline_mask_tot)
-            
-            gc.collect()
-            t5=time.time()
-            
-            
-            # get orders of each textregion. This method by now only works for one column documents. 
-            indexes_sorted, matrix_of_orders=self.order_of_regions(textline_mask_tot,contours)
-            order_of_texts, id_of_texts=self.order_and_id_of_texts(contours ,matrix_of_orders ,indexes_sorted )
-            
-            
-            ##########  
-            gc.collect()
-            t6=time.time()
-            
-            
-            self.get_all_image_patches_coordination(image_page)
-            
-            ########## 
-            ##########  
-            gc.collect()
-            
-            t7=time.time()
-
-        else:
             contours=[]
             order_of_texts=None
             id_of_texts=None
-        self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
-
-        # Destroy the current Keras session/graph to free memory
-        K.clear_session()
+            self.write_into_page_xml(contours,page_coord,self.dir_out , order_of_texts , id_of_texts)
+            print( "time total = "+"{0:.2f}".format(time.time()-t1) )
         
-        print( "time total = "+"{0:.2f}".format(time.time()-t1) )
-        print( "time needed for page extraction = "+"{0:.2f}".format(t2-t1) )
-        print( "time needed for text region extraction and get contours = "+"{0:.2f}".format(t3-t2) )
-        if len(contours)>0:
-            print( "time needed for textlines = "+"{0:.2f}".format(t4-t3) )
-            print( "time needed to get slopes of regions (deskewing) = "+"{0:.2f}".format(t5-t4) )
-            print( "time needed to get order of regions = "+"{0:.2f}".format(t6-t5) )
-            print( "time needed to implement deskewing = "+"{0:.2f}".format(t7-t6) )
 
         
 
