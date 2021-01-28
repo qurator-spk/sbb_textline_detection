@@ -9,5 +9,5 @@ scikit-learn
 numpy == 1.18.*  # XXX for tensorflow-gpu 1.15
 tensorflow-gpu == 1.15.*
 scipy
-ocrd >= 2.18.0
+ocrd >= 2.22.3
 shapely >= 1.7.1
