@@ -46,6 +46,7 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
         log = getLogger('processor.OcrdSbbTextlineDetectorRecognize')
         assert_file_grp_cardinality(self.input_file_grp, 1)
         assert_file_grp_cardinality(self.output_file_grp, 1)
+        model = self.resolve_resource(self.parameter['model'])
 
         for (n, input_file) in enumerate(self.input_files):
             page_id = input_file.pageId or input_file.ID
@@ -73,7 +74,6 @@ class OcrdSbbTextlineDetectorRecognize(Processor):
                 page_image.save(image_file)
 
                 # Segment the image
-                model = self.parameter['model']
                 x = textline_detector(image_file, tmp_dirname, file_id, model)
                 x.run()
 
