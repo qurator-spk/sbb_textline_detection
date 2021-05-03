@@ -15,6 +15,7 @@ setup(
     keywords='qurator',
     license='Apache',
     url="https://qurator.ai",
+    namespace_packages=['qurator'],
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
     install_requires=install_requires,
