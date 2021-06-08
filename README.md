@@ -1,3 +1,6 @@
+### This software is no longer actively maintained. It has been superseded by [eynollah](https://github.com/qurator-spk/eynollah), which offers additional functionality and overall improved performance and compatibility.
+---
+
 [![Build Status](https://travis-ci.org/qurator-spk/sbb_textline_detection.svg?branch=master)](https://travis-ci.org/qurator-spk/sbb_textline_detection)
 
 # Textline Detection
