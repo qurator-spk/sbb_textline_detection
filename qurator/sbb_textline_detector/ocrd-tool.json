@@ -16,7 +16,8 @@
       "parameters": {
         "model": {
           "type": "string",
-          "format": "file",
+          "format": "uri",
+          "content-type": "text/directory",
           "cacheable": true,
           "description": "Path to directory containing models to be used (See https://qurator-data.de/sbb_textline_detector/)"
         }
