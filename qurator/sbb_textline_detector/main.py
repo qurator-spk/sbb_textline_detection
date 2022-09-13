@@ -2167,8 +2167,6 @@ class textline_detector:
 @click.option('--model', '-m', help='directory of models',
               type=click.Path(exists=True, file_okay=False), required=True)
 def main(image, out, model):
-    possibles = globals()  # XXX unused?
-    possibles.update(locals())
     x = textline_detector(image, out, None, model)
     x.run()
 
