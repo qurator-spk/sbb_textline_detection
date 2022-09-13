@@ -3,9 +3,9 @@
 dist: xenial  # required for Python >= 3.7
 language: python
 python:
-  # sbb_textline_detector requires Python 3.6 or newer
+  # sbb_textline_detector requires Python 3.6
   - "3.6"
-  - "3.7"
+  # broken on Python 3.7 (and never supposed to work)
   # tensorflow-gpu<2.0 is not available for Python 3.8
 
 install:
