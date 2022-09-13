@@ -2160,9 +2160,12 @@ class textline_detector:
         
 
 @click.command()
-@click.option('--image', '-i', help='image filename', type=click.Path(exists=True, dir_okay=False))
-@click.option('--out', '-o', help='directory to write output xml data', type=click.Path(exists=True, file_okay=False))
-@click.option('--model', '-m', help='directory of models', type=click.Path(exists=True, file_okay=False))
+@click.option('--image', '-i', help='image filename',
+              type=click.Path(exists=True, dir_okay=False), required=True)
+@click.option('--out', '-o', help='directory to write output xml data',
+              type=click.Path(exists=True, file_okay=False), required=True)
+@click.option('--model', '-m', help='directory of models',
+              type=click.Path(exists=True, file_okay=False), required=True)
 def main(image, out, model):
     possibles = globals()  # XXX unused?
     possibles.update(locals())
