@@ -1,4 +1,4 @@
-opencv-python-headless
+opencv-python-headless < 4.6  # XXX https://github.com/qurator-spk/sbb_textline_detection/issues/60
 matplotlib
 seaborn
 tqdm
